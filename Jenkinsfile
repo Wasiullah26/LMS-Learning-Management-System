@@ -145,10 +145,41 @@ pipeline {
                     withAWS(credentials: 'aws-credentials', region: "${AWS_REGION}") {
                         bat """
                             @echo off
-                            if defined AWS_SESSION_TOKEN set AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}
-                            where python >nul 2>&1 && python -m pip install awsebcli --user || where py >nul 2>&1 && py -m pip install awsebcli --user || exit /b 0
+                            echo ========================================
+                            echo Starting Elastic Beanstalk Deployment
+                            echo ========================================
+                            
+                            REM Set AWS session token if available
+                            if defined AWS_SESSION_TOKEN (
+                                set AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}
+                                echo AWS Session Token set
+                            )
+                            
+                            REM Install EB CLI
+                            echo Installing EB CLI...
+                            where python >nul 2>&1 && python -m pip install awsebcli --user || where py >nul 2>&1 && py -m pip install awsebcli --user
+                            if errorlevel 1 (
+                                echo ERROR: Failed to install EB CLI
+                                exit /b 1
+                            )
+                            
+                            REM Copy .elasticbeanstalk config to deploy directory
+                            echo Setting up EB configuration...
+                            if not exist deploy\\.elasticbeanstalk mkdir deploy\\.elasticbeanstalk
+                            if exist .elasticbeanstalk\\config.yml copy /Y .elasticbeanstalk\\config.yml deploy\\.elasticbeanstalk\\config.yml
+                            
+                            REM Deploy to Elastic Beanstalk
+                            echo Deploying to ${EB_ENVIRONMENT_NAME}...
                             cd deploy
+                            eb --version
+                            eb use ${EB_ENVIRONMENT_NAME} || echo Warning: Could not set EB environment
                             eb deploy ${EB_ENVIRONMENT_NAME} --staged || eb deploy ${EB_ENVIRONMENT_NAME}
+                            if errorlevel 1 (
+                                echo ERROR: Deployment failed
+                                cd ..
+                                exit /b 1
+                            )
+                            echo Deployment completed successfully!
                             cd ..
                         """
                     }
