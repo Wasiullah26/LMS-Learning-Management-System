@@ -2,7 +2,7 @@
 
 A full-stack Learning Management System built with React, Flask, DynamoDB, and AWS S3.
 
-<!-- CI/CD Auto-trigger Test: This comment tests the automatic Jenkins build trigger -->
+<!-- CI/CD Auto-trigger Test: Testing automatic Jenkins build trigger - Build #10 should start automatically -->
 
 ## Project Structure
 
