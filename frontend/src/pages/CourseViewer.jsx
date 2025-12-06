@@ -93,7 +93,7 @@ const CourseViewer = () => {
             <line x1="12" y1="16" x2="12.01" y2="16"/>
           </svg>
           <h3>Course not found</h3>
-          <p>The course you're looking for doesn't exist.</p>
+          <p>The course you&apos;re looking for doesn&apos;t exist.</p>
         </div>
       </div>
     );
@@ -215,7 +215,7 @@ const CourseViewer = () => {
                       </svg>
                       <div>
                         <h4>Module Completed!</h4>
-                        <p>Great job! You've completed this module.</p>
+                        <p>Great job! You&apos;ve completed this module.</p>
                       </div>
                     </div>
                   ) : (

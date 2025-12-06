@@ -16,7 +16,7 @@ from routes.admin import admin_bp
 def create_app(config_name=None):
     app = Flask(__name__)
 
-    config_name = config_name or os.getenv('FLASK_ENV', 'development')
+    config_name = config_name or os.getenv("FLASK_ENV", "development")
     app.config.from_object(config[config_name])
 
     # setup aws stuff when server starts
@@ -28,51 +28,55 @@ def create_app(config_name=None):
         print(f"⚠ {message}")
 
     # enable cors for frontend
-    CORS(app, origins=app.config['CORS_ORIGINS'], supports_credentials=True)
+    CORS(app, origins=app.config["CORS_ORIGINS"], supports_credentials=True)
 
     # register all the routes
-    app.register_blueprint(auth_bp, url_prefix='/api/auth')
-    app.register_blueprint(users_bp, url_prefix='/api/users')
-    app.register_blueprint(courses_bp, url_prefix='/api/courses')
-    app.register_blueprint(modules_bp, url_prefix='/api/modules')
-    app.register_blueprint(enrollments_bp, url_prefix='/api/enrollments')
-    app.register_blueprint(progress_bp, url_prefix='/api/progress')
-    app.register_blueprint(upload_bp, url_prefix='/api/upload')
-    app.register_blueprint(admin_bp, url_prefix='/api/admin')
+    app.register_blueprint(auth_bp, url_prefix="/api/auth")
+    app.register_blueprint(users_bp, url_prefix="/api/users")
+    app.register_blueprint(courses_bp, url_prefix="/api/courses")
+    app.register_blueprint(modules_bp, url_prefix="/api/modules")
+    app.register_blueprint(enrollments_bp, url_prefix="/api/enrollments")
+    app.register_blueprint(progress_bp, url_prefix="/api/progress")
+    app.register_blueprint(upload_bp, url_prefix="/api/upload")
+    app.register_blueprint(admin_bp, url_prefix="/api/admin")
 
-    @app.route('/api/health', methods=['GET'])
+    @app.route("/api/health", methods=["GET"])
     def health_check():
-        return jsonify({'status': 'healthy', 'message': 'LMS API is running'}), 200
+        return jsonify({"status": "healthy", "message": "LMS API is running"}), 200
 
-    @app.route('/', methods=['GET'])
+    @app.route("/", methods=["GET"])
     def root():
-        return jsonify({
-            'message': 'LMS API',
-            'version': '1.0.0',
-            'endpoints': {
-                'health': '/api/health',
-                'auth': '/api/auth',
-                'users': '/api/users',
-                'courses': '/api/courses',
-                'modules': '/api/modules',
-                'enrollments': '/api/enrollments',
-                'progress': '/api/progress',
-                'upload': '/api/upload'
-            }
-        }), 200
+        return (
+            jsonify(
+                {
+                    "message": "LMS API",
+                    "version": "1.0.0",
+                    "endpoints": {
+                        "health": "/api/health",
+                        "auth": "/api/auth",
+                        "users": "/api/users",
+                        "courses": "/api/courses",
+                        "modules": "/api/modules",
+                        "enrollments": "/api/enrollments",
+                        "progress": "/api/progress",
+                        "upload": "/api/upload",
+                    },
+                }
+            ),
+            200,
+        )
 
     @app.errorhandler(404)
     def not_found(_error):
-        return jsonify({'error': 'Endpoint not found'}), 404
+        return jsonify({"error": "Endpoint not found"}), 404
 
     @app.errorhandler(500)
     def internal_error(_error):
-        return jsonify({'error': 'Internal server error'}), 500
+        return jsonify({"error": "Internal server error"}), 500
 
     return app
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app = create_app()
-    app.run(debug=True, host='0.0.0.0', port=5000)
-
+    app.run(debug=True, host="0.0.0.0", port=5000)

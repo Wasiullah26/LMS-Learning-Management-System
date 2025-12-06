@@ -12,47 +12,49 @@ class CourseModel:
         # setup dynamodb connection
         if Config.AWS_ACCESS_KEY_ID and Config.AWS_SECRET_ACCESS_KEY:
             client_kwargs = {
-                'region_name': Config.AWS_REGION,
-                'aws_access_key_id': Config.AWS_ACCESS_KEY_ID,
-                'aws_secret_access_key': Config.AWS_SECRET_ACCESS_KEY
+                "region_name": Config.AWS_REGION,
+                "aws_access_key_id": Config.AWS_ACCESS_KEY_ID,
+                "aws_secret_access_key": Config.AWS_SECRET_ACCESS_KEY,
             }
             # add session token if we have it
             if Config.AWS_SESSION_TOKEN:
-                client_kwargs['aws_session_token'] = Config.AWS_SESSION_TOKEN
-            self.dynamodb = boto3.resource('dynamodb', **client_kwargs)
+                client_kwargs["aws_session_token"] = Config.AWS_SESSION_TOKEN
+            self.dynamodb = boto3.resource("dynamodb", **client_kwargs)
         else:
-            self.dynamodb = boto3.resource('dynamodb', region_name=Config.AWS_REGION)
+            self.dynamodb = boto3.resource("dynamodb", region_name=Config.AWS_REGION)
 
         self.table = self.dynamodb.Table(Config.DYNAMODB_COURSES_TABLE)
 
-    def create_course(self, instructor_id, title, description, category=None, specialization_id=None, instructor_ids=None):
+    def create_course(
+        self, instructor_id, title, description, category=None, specialization_id=None, instructor_ids=None
+    ):
         # create a new course
         try:
             course_id = str(uuid.uuid4())
             current_time = datetime.utcnow().isoformat()
 
             course_data = {
-                'courseId': course_id,
-                'title': title,
-                'description': description,
-                'category': category or 'General',
-                'createdAt': current_time,
-                'updatedAt': current_time
+                "courseId": course_id,
+                "title": title,
+                "description": description,
+                "category": category or "General",
+                "createdAt": current_time,
+                "updatedAt": current_time,
             }
 
             # support multiple instructors
             if instructor_ids and isinstance(instructor_ids, list):
-                course_data['instructorIds'] = instructor_ids
+                course_data["instructorIds"] = instructor_ids
                 # also set instructorId for backwards compatibility
                 if instructor_ids:
-                    course_data['instructorId'] = instructor_ids[0]
+                    course_data["instructorId"] = instructor_ids[0]
             else:
                 # single instructor
-                course_data['instructorId'] = instructor_id
-                course_data['instructorIds'] = [instructor_id] if instructor_id else []
+                course_data["instructorId"] = instructor_id
+                course_data["instructorIds"] = [instructor_id] if instructor_id else []
 
             if specialization_id:
-                course_data['specializationId'] = specialization_id
+                course_data["specializationId"] = specialization_id
 
             self.table.put_item(Item=course_data)
             return True, course_data
@@ -63,8 +65,8 @@ class CourseModel:
     def get_course(self, course_id):
         # get course by id
         try:
-            response = self.table.get_item(Key={'courseId': course_id})
-            return response.get('Item')
+            response = self.table.get_item(Key={"courseId": course_id})
+            return response.get("Item")
         except ClientError:
             return None
 
@@ -77,11 +79,11 @@ class CourseModel:
                 return False, "Course not found"
 
             # check if instructor is authorized
-            instructor_ids = course.get('instructorIds', [])
+            instructor_ids = course.get("instructorIds", [])
             if isinstance(instructor_ids, str):
                 instructor_ids = [instructor_ids]
             # also check single instructorId
-            single_instructor_id = course.get('instructorId')
+            single_instructor_id = course.get("instructorId")
 
             if instructor_id not in instructor_ids and single_instructor_id != instructor_id:
                 return False, "Unauthorized to update this course"
@@ -102,11 +104,11 @@ class CourseModel:
             expression_attribute_values[":updatedAt"] = datetime.utcnow().isoformat()
 
             self.table.update_item(
-                Key={'courseId': course_id},
+                Key={"courseId": course_id},
                 UpdateExpression=update_expression,
                 ExpressionAttributeNames=expression_attribute_names,
                 ExpressionAttributeValues=expression_attribute_values,
-                ReturnValues='ALL_NEW'
+                ReturnValues="ALL_NEW",
             )
 
             updated_course = self.get_course(course_id)
@@ -140,11 +142,11 @@ class CourseModel:
             expression_attribute_values[":updatedAt"] = datetime.utcnow().isoformat()
 
             self.table.update_item(
-                Key={'courseId': course_id},
+                Key={"courseId": course_id},
                 UpdateExpression=update_expression,
                 ExpressionAttributeNames=expression_attribute_names,
                 ExpressionAttributeValues=expression_attribute_values,
-                ReturnValues='ALL_NEW'
+                ReturnValues="ALL_NEW",
             )
 
             updated_course = self.get_course(course_id)
@@ -162,16 +164,16 @@ class CourseModel:
                 return False, "Course not found"
 
             # check if instructor is authorized
-            instructor_ids = course.get('instructorIds', [])
+            instructor_ids = course.get("instructorIds", [])
             if isinstance(instructor_ids, str):
                 instructor_ids = [instructor_ids]
             # also check single instructorId
-            single_instructor_id = course.get('instructorId')
+            single_instructor_id = course.get("instructorId")
 
             if instructor_id not in instructor_ids and single_instructor_id != instructor_id:
                 return False, "Unauthorized to delete this course"
 
-            self.table.delete_item(Key={'courseId': course_id})
+            self.table.delete_item(Key={"courseId": course_id})
             return True, None
 
         except ClientError as error:
@@ -185,7 +187,7 @@ class CourseModel:
             if not course:
                 return False, "Course not found"
 
-            self.table.delete_item(Key={'courseId': course_id})
+            self.table.delete_item(Key={"courseId": course_id})
             return True, None
 
         except ClientError as error:
@@ -198,16 +200,16 @@ class CourseModel:
                 # filter by instructor, need to check both instructorId and instructorIds
                 # dynamodb cant check array membership in filter, so scan all and filter in python
                 response = self.table.scan()
-                items = response.get('Items', [])
+                items = response.get("Items", [])
                 # filter courses where instructor matches
                 filtered_items = []
                 for item in items:
                     # check single instructorId
-                    if item.get('instructorId') == instructor_id:
+                    if item.get("instructorId") == instructor_id:
                         filtered_items.append(item)
                     # check instructorIds array
-                    elif 'instructorIds' in item:
-                        instructor_ids = item.get('instructorIds', [])
+                    elif "instructorIds" in item:
+                        instructor_ids = item.get("instructorIds", [])
                         if isinstance(instructor_ids, str):
                             instructor_ids = [instructor_ids]
                         if instructor_id in instructor_ids:
@@ -215,18 +217,17 @@ class CourseModel:
                 return filtered_items
             elif specialization_id:
                 response = self.table.scan(
-                    FilterExpression='#specializationId = :specializationId',
-                    ExpressionAttributeNames={'#specializationId': 'specializationId'},
-                    ExpressionAttributeValues={':specializationId': specialization_id}
+                    FilterExpression="#specializationId = :specializationId",
+                    ExpressionAttributeNames={"#specializationId": "specializationId"},
+                    ExpressionAttributeValues={":specializationId": specialization_id},
                 )
             elif category:
                 response = self.table.scan(
-                    FilterExpression='category = :category',
-                    ExpressionAttributeValues={':category': category}
+                    FilterExpression="category = :category", ExpressionAttributeValues={":category": category}
                 )
             else:
                 response = self.table.scan()
 
-            return response.get('Items', [])
+            return response.get("Items", [])
         except ClientError:
             return []

@@ -6,7 +6,6 @@ const Navbar = () => {
   const navigate = useNavigate();
   const isAuthenticated = authService.isAuthenticated();
   const user = authService.getUser();
-  const isInstructor = authService.isInstructor();
   const isAdmin = authService.isAdmin();
 
   const handleLogout = () => {

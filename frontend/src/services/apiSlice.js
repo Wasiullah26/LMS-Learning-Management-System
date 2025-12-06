@@ -9,7 +9,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
 const baseQuery = fetchBaseQuery({
   baseUrl: API_BASE_URL,
-  prepareHeaders: (headers, { getState }) => {
+  prepareHeaders: (headers) => {
     const token = authService.getToken();
     if (token) {
       headers.set('authorization', `Bearer ${token}`);
@@ -68,7 +68,7 @@ export const apiSlice = createApi({
         url: '/courses',
         params,
       }),
-      providesTags: (result, error, arg) => {
+      providesTags: (result, _error, arg) => {
         // Make cache key user-specific by including user ID or instructor ID in tags
         const userId = authService.getUser()?.userId;
         const instructorId = arg?.instructorId;
@@ -170,7 +170,7 @@ export const apiSlice = createApi({
         url: '/enrollments',
         params,
       }),
-      providesTags: (result, error, arg) => {
+      providesTags: (result) => {
         // Make cache key user-specific by including user ID in tags
         const userId = authService.getUser()?.userId;
         return [
@@ -206,7 +206,7 @@ export const apiSlice = createApi({
         url: '/progress',
         params,
       }),
-      providesTags: (result, error, arg) => {
+      providesTags: (result, _error, arg) => {
         // Make cache key user-specific by including user ID in tags
         const userId = authService.getUser()?.userId;
         const courseId = arg?.courseId || 'ALL';

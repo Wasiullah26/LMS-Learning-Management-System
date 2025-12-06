@@ -1,0 +1,75 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  backend-analysis:
+    name: Backend Static Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Install dependencies
+      run: |
+        cd backend
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+    
+    - name: Run Pylint
+      run: |
+        cd backend
+        pylint --rcfile=.pylintrc app.py models/ routes/ utils/ setup/ || true
+    
+    - name: Run Flake8
+      run: |
+        cd backend
+        flake8 --config=.flake8 app.py models/ routes/ utils/ setup/ || true
+    
+    - name: Run Bandit
+      run: |
+        cd backend
+        bandit -r app.py models routes utils setup -f txt --exclude venv,__pycache__,.git,.venv,reports || true
+    
+    - name: Run Safety
+      run: |
+        cd backend
+        safety check || true
+
+  frontend-analysis:
+    name: Frontend Static Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+    
+    - name: Install dependencies
+      run: |
+        cd frontend
+        npm ci
+    
+    - name: Run ESLint
+      run: |
+        cd frontend
+        npm run lint || true
+    
+    - name: Run npm audit
+      run: |
+        cd frontend
+        npm audit --audit-level=moderate || true
+

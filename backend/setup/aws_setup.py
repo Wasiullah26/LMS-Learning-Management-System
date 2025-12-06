@@ -7,86 +7,75 @@ from dotenv import load_dotenv
 
 # load env vars from .env file
 import pathlib
-env_path = pathlib.Path(__file__).parent.parent / '.env'
+
+env_path = pathlib.Path(__file__).parent.parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
 # aws config
-AWS_REGION = os.getenv('AWS_REGION', 'us-east-1')
-AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
-AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
-AWS_SESSION_TOKEN = os.getenv('AWS_SESSION_TOKEN')  # for learner lab
+AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
+AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+AWS_SESSION_TOKEN = os.getenv("AWS_SESSION_TOKEN")  # for learner lab
 
 # table definitions
 DYNAMODB_TABLES = {
-    'users': {
-        'TableName': 'lms-users',
-        'KeySchema': [
-            {'AttributeName': 'userId', 'KeyType': 'HASH'}
-        ],
-        'AttributeDefinitions': [
-            {'AttributeName': 'userId', 'AttributeType': 'S'}
-        ],
-        'BillingMode': 'PAY_PER_REQUEST'
+    "users": {
+        "TableName": "lms-users",
+        "KeySchema": [{"AttributeName": "userId", "KeyType": "HASH"}],
+        "AttributeDefinitions": [{"AttributeName": "userId", "AttributeType": "S"}],
+        "BillingMode": "PAY_PER_REQUEST",
     },
-    'courses': {
-        'TableName': 'lms-courses',
-        'KeySchema': [
-            {'AttributeName': 'courseId', 'KeyType': 'HASH'}
-        ],
-        'AttributeDefinitions': [
-            {'AttributeName': 'courseId', 'AttributeType': 'S'}
-        ],
-        'BillingMode': 'PAY_PER_REQUEST'
+    "courses": {
+        "TableName": "lms-courses",
+        "KeySchema": [{"AttributeName": "courseId", "KeyType": "HASH"}],
+        "AttributeDefinitions": [{"AttributeName": "courseId", "AttributeType": "S"}],
+        "BillingMode": "PAY_PER_REQUEST",
     },
-    'modules': {
-        'TableName': 'lms-modules',
-        'KeySchema': [
-            {'AttributeName': 'moduleId', 'KeyType': 'HASH'},
-            {'AttributeName': 'courseId', 'KeyType': 'RANGE'}
+    "modules": {
+        "TableName": "lms-modules",
+        "KeySchema": [
+            {"AttributeName": "moduleId", "KeyType": "HASH"},
+            {"AttributeName": "courseId", "KeyType": "RANGE"},
         ],
-        'AttributeDefinitions': [
-            {'AttributeName': 'moduleId', 'AttributeType': 'S'},
-            {'AttributeName': 'courseId', 'AttributeType': 'S'}
+        "AttributeDefinitions": [
+            {"AttributeName": "moduleId", "AttributeType": "S"},
+            {"AttributeName": "courseId", "AttributeType": "S"},
         ],
-        'BillingMode': 'PAY_PER_REQUEST'
+        "BillingMode": "PAY_PER_REQUEST",
     },
-    'enrollments': {
-        'TableName': 'lms-enrollments',
-        'KeySchema': [
-            {'AttributeName': 'enrollmentId', 'KeyType': 'HASH'},
-            {'AttributeName': 'studentId', 'KeyType': 'RANGE'}
+    "enrollments": {
+        "TableName": "lms-enrollments",
+        "KeySchema": [
+            {"AttributeName": "enrollmentId", "KeyType": "HASH"},
+            {"AttributeName": "studentId", "KeyType": "RANGE"},
         ],
-        'AttributeDefinitions': [
-            {'AttributeName': 'enrollmentId', 'AttributeType': 'S'},
-            {'AttributeName': 'studentId', 'AttributeType': 'S'}
+        "AttributeDefinitions": [
+            {"AttributeName": "enrollmentId", "AttributeType": "S"},
+            {"AttributeName": "studentId", "AttributeType": "S"},
         ],
-        'BillingMode': 'PAY_PER_REQUEST'
+        "BillingMode": "PAY_PER_REQUEST",
     },
-    'progress': {
-        'TableName': 'lms-progress',
-        'KeySchema': [
-            {'AttributeName': 'progressId', 'KeyType': 'HASH'},
-            {'AttributeName': 'studentId', 'KeyType': 'RANGE'}
+    "progress": {
+        "TableName": "lms-progress",
+        "KeySchema": [
+            {"AttributeName": "progressId", "KeyType": "HASH"},
+            {"AttributeName": "studentId", "KeyType": "RANGE"},
         ],
-        'AttributeDefinitions': [
-            {'AttributeName': 'progressId', 'AttributeType': 'S'},
-            {'AttributeName': 'studentId', 'AttributeType': 'S'}
+        "AttributeDefinitions": [
+            {"AttributeName": "progressId", "AttributeType": "S"},
+            {"AttributeName": "studentId", "AttributeType": "S"},
         ],
-        'BillingMode': 'PAY_PER_REQUEST'
+        "BillingMode": "PAY_PER_REQUEST",
     },
-    'specializations': {
-        'TableName': 'lms-specializations',
-        'KeySchema': [
-            {'AttributeName': 'specializationId', 'KeyType': 'HASH'}
-        ],
-        'AttributeDefinitions': [
-            {'AttributeName': 'specializationId', 'AttributeType': 'S'}
-        ],
-        'BillingMode': 'PAY_PER_REQUEST'
-    }
+    "specializations": {
+        "TableName": "lms-specializations",
+        "KeySchema": [{"AttributeName": "specializationId", "KeyType": "HASH"}],
+        "AttributeDefinitions": [{"AttributeName": "specializationId", "AttributeType": "S"}],
+        "BillingMode": "PAY_PER_REQUEST",
+    },
 }
 
-S3_BUCKET_NAME = os.getenv('S3_BUCKET_NAME', 'lms-course-materials')
+S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME", "lms-course-materials")
 
 
 def create_dynamodb_client():
@@ -94,17 +83,17 @@ def create_dynamodb_client():
     try:
         if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY:
             client_kwargs = {
-                'region_name': AWS_REGION,
-                'aws_access_key_id': AWS_ACCESS_KEY_ID,
-                'aws_secret_access_key': AWS_SECRET_ACCESS_KEY
+                "region_name": AWS_REGION,
+                "aws_access_key_id": AWS_ACCESS_KEY_ID,
+                "aws_secret_access_key": AWS_SECRET_ACCESS_KEY,
             }
             # add session token if we have it
             if AWS_SESSION_TOKEN:
-                client_kwargs['aws_session_token'] = AWS_SESSION_TOKEN
-            dynamodb = boto3.client('dynamodb', **client_kwargs)
+                client_kwargs["aws_session_token"] = AWS_SESSION_TOKEN
+            dynamodb = boto3.client("dynamodb", **client_kwargs)
         else:
             # use default credentials
-            dynamodb = boto3.client('dynamodb', region_name=AWS_REGION)
+            dynamodb = boto3.client("dynamodb", region_name=AWS_REGION)
         return dynamodb
     except Exception as error:
         print(f"Error creating DynamoDB client: {str(error)}")
@@ -116,17 +105,17 @@ def create_s3_client():
     try:
         if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY:
             client_kwargs = {
-                'region_name': AWS_REGION,
-                'aws_access_key_id': AWS_ACCESS_KEY_ID,
-                'aws_secret_access_key': AWS_SECRET_ACCESS_KEY
+                "region_name": AWS_REGION,
+                "aws_access_key_id": AWS_ACCESS_KEY_ID,
+                "aws_secret_access_key": AWS_SECRET_ACCESS_KEY,
             }
             # add session token if we have it
             if AWS_SESSION_TOKEN:
-                client_kwargs['aws_session_token'] = AWS_SESSION_TOKEN
-            s3 = boto3.client('s3', **client_kwargs)
+                client_kwargs["aws_session_token"] = AWS_SESSION_TOKEN
+            s3 = boto3.client("s3", **client_kwargs)
         else:
             # use default credentials
-            s3 = boto3.client('s3', region_name=AWS_REGION)
+            s3 = boto3.client("s3", region_name=AWS_REGION)
         return s3
     except Exception as error:
         print(f"Error creating S3 client: {str(error)}")
@@ -136,10 +125,10 @@ def create_s3_client():
 def table_exists(dynamodb, table_name):
     # check if table already exists
     try:
-        response = dynamodb.describe_table(TableName=table_name)
+        dynamodb.describe_table(TableName=table_name)
         return True
     except ClientError as error:
-        if error.response['Error']['Code'] == 'ResourceNotFoundException':
+        if error.response["Error"]["Code"] == "ResourceNotFoundException":
             return False
         else:
             raise
@@ -147,7 +136,7 @@ def table_exists(dynamodb, table_name):
 
 def create_dynamodb_table(dynamodb, table_config, silent=False):
     # create table if it doesnt exist
-    table_name = table_config['TableName']
+    table_name = table_config["TableName"]
 
     if table_exists(dynamodb, table_name):
         if not silent:
@@ -160,15 +149,15 @@ def create_dynamodb_table(dynamodb, table_config, silent=False):
         dynamodb.create_table(**table_config)
 
         # wait for table to be ready
-        waiter = dynamodb.get_waiter('table_exists')
+        waiter = dynamodb.get_waiter("table_exists")
         waiter.wait(TableName=table_name)
 
         if not silent:
             print(f"✓ Successfully created table '{table_name}'")
         return True
     except ClientError as error:
-        error_code = error.response['Error']['Code']
-        if error_code == 'ResourceInUseException':
+        error_code = error.response["Error"]["Code"]
+        if error_code == "ResourceInUseException":
             if not silent:
                 print(f"✓ Table '{table_name}' already exists")
             return True
@@ -184,8 +173,8 @@ def bucket_exists(s3, bucket_name):
         s3.head_bucket(Bucket=bucket_name)
         return True
     except ClientError as error:
-        error_code = error.response['Error']['Code']
-        if error_code == '404':
+        error_code = error.response["Error"]["Code"]
+        if error_code == "404":
             return False
         else:
             raise
@@ -203,27 +192,26 @@ def create_s3_bucket(s3, bucket_name, silent=False):
             print(f"Creating S3 bucket '{bucket_name}'...")
 
         # create bucket
-        if AWS_REGION == 'us-east-1':
+        if AWS_REGION == "us-east-1":
             # us-east-1 doesnt need LocationConstraint
             s3.create_bucket(Bucket=bucket_name)
         else:
-            s3.create_bucket(
-                Bucket=bucket_name,
-                CreateBucketConfiguration={'LocationConstraint': AWS_REGION}
-            )
+            s3.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": AWS_REGION})
 
         if not silent:
             print(f"✓ Successfully created bucket '{bucket_name}'")
 
         # setup cors for frontend
         cors_configuration = {
-            'CORSRules': [{
-                'AllowedHeaders': ['*'],
-                'AllowedMethods': ['GET', 'PUT', 'POST', 'DELETE', 'HEAD'],
-                'AllowedOrigins': ['*'],  # change this in production
-                'ExposeHeaders': ['ETag'],
-                'MaxAgeSeconds': 3000
-            }]
+            "CORSRules": [
+                {
+                    "AllowedHeaders": ["*"],
+                    "AllowedMethods": ["GET", "PUT", "POST", "DELETE", "HEAD"],
+                    "AllowedOrigins": ["*"],  # change this in production
+                    "ExposeHeaders": ["ETag"],
+                    "MaxAgeSeconds": 3000,
+                }
+            ]
         }
         s3.put_bucket_cors(Bucket=bucket_name, CORSConfiguration=cors_configuration)
         if not silent:
@@ -231,12 +219,12 @@ def create_s3_bucket(s3, bucket_name, silent=False):
 
         return True
     except ClientError as error:
-        error_code = error.response['Error']['Code']
-        if error_code == 'BucketAlreadyExists':
+        error_code = error.response["Error"]["Code"]
+        if error_code == "BucketAlreadyExists":
             if not silent:
                 print(f"✓ Bucket '{bucket_name}' already exists")
             return True
-        elif error_code == 'BucketAlreadyOwnedByYou':
+        elif error_code == "BucketAlreadyOwnedByYou":
             if not silent:
                 print(f"✓ Bucket '{bucket_name}' already exists and is owned by you")
             return True
@@ -258,7 +246,7 @@ def setup_aws_resources(silent=False):
 
         # create tables
         tables_created = 0
-        for table_key, table_config in DYNAMODB_TABLES.items():
+        for table_config in DYNAMODB_TABLES.values():
             if create_dynamodb_table(dynamodb, table_config, silent=silent):
                 tables_created += 1
 
@@ -303,7 +291,7 @@ def main():
     print("Creating DynamoDB tables...")
     print("-" * 60)
     tables_created = 0
-    for table_key, table_config in DYNAMODB_TABLES.items():
+    for table_config in DYNAMODB_TABLES.values():
         if create_dynamodb_table(dynamodb, table_config, silent=False):
             tables_created += 1
         print()
@@ -332,5 +320,5 @@ def main():
         print("\n⚠ Some resources may not have been created. Please check the errors above.")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

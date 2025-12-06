@@ -72,8 +72,10 @@ const AdminManageSpecializations = () => {
   const [deleteCourse] = useAdminDeleteCourseMutation();
 
   const specializations = specializationsData?.specializations || [];
-  const instructors = instructorsData?.users || [];
-  const coursesDataRaw = coursesData?.courses || [];
+  
+  // Memoize instructors and courses data to prevent unnecessary re-renders
+  const instructors = useMemo(() => instructorsData?.users || [], [instructorsData?.users]);
+  const coursesDataRaw = useMemo(() => coursesData?.courses || [], [coursesData?.courses]);
   
   // Enrich courses with instructor names
   const courses = useMemo(() => {

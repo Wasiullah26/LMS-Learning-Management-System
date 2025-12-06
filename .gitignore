@@ -33,6 +33,7 @@ frontend/.env
 # These are generated files from static code analysis
 # Don't need to commit them - can be regenerated
 backend/reports/
+frontend/reports/
 *.log
 
 # ============================================
@@ -79,6 +80,14 @@ $RECYCLE.BIN/
 .aws/
 *.pem
 *.key
+
+# ============================================
+# Documentation Files
+# ============================================
+# Ignore all markdown files except README.md
+*.md
+!README.md
+!**/README.md
 
 # ============================================
 # Keep Important Files

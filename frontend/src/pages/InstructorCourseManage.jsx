@@ -26,7 +26,7 @@ const InstructorCourseManage = () => {
   const moduleFormRef = useRef(null);
   
   // Force refetch on mount to ensure fresh data
-  const { data: courseData, isLoading: courseLoading, refetch: refetchCourse } = useGetCourseQuery(
+  const { data: courseData, isLoading: courseLoading } = useGetCourseQuery(
     id, 
     { 
       skip: isNew,
@@ -443,7 +443,7 @@ const InstructorCourseManage = () => {
           {courseTouched.category && courseErrors.category && (
             <span className="error-message">{courseErrors.category}</span>
           )}
-          <small style={{ color: '#666' }}>Optional - e.g., "General", "Advanced", etc.</small>
+          <small style={{ color: '#666' }}>Optional - e.g., &quot;General&quot;, &quot;Advanced&quot;, etc.</small>
         </div>
         <button type="submit" className="btn btn-primary" disabled={!isNew && !hasChanges}>
           {isNew ? 'Create Course' : 'Update Course'}

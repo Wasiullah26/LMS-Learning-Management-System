@@ -81,7 +81,7 @@ const CourseDetail = () => {
             <line x1="12" y1="16" x2="12.01" y2="16"/>
           </svg>
           <h3>Course not found</h3>
-          <p>The course you're looking for doesn't exist.</p>
+          <p>The course you&apos;re looking for doesn&apos;t exist.</p>
           <button onClick={() => navigate('/courses')} className="btn btn-primary" style={{ marginTop: '1rem' }}>
             Browse Courses
           </button>
@@ -202,7 +202,7 @@ const CourseDetail = () => {
                       </div>
                     </div>
                     <p className="course-detail-enrollment-text">
-                      You're enrolled in this course. Start learning now!
+                      You&apos;re enrolled in this course. Start learning now!
                     </p>
                     <Link to={`/courses/${id}/learn`} className="course-detail-enroll-btn primary">
                       <span>Continue Learning</span>

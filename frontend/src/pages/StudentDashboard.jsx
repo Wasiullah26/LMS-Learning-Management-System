@@ -113,10 +113,10 @@ const EnrollmentCard = ({ enrollment }) => {
   );
   
   const course = courseData?.course;
-  const progressList = progressData?.progress || [];
   
   const progress = useMemo(() => {
     if (!course?.modules) return { percentage: 0 };
+    const progressList = progressData?.progress || [];
     const totalModules = course.modules.length;
     const completedModules = progressList.filter(p => p.status === 'completed').length;
     return {
@@ -124,7 +124,7 @@ const EnrollmentCard = ({ enrollment }) => {
       total: totalModules,
       percentage: totalModules > 0 ? Math.round((completedModules / totalModules) * 100) : 0
     };
-  }, [course, progressList]);
+  }, [course, progressData?.progress]);
 
   if (courseLoading) {
     return <div className="card">Loading course...</div>;

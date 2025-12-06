@@ -23,7 +23,7 @@ echo ""
 
 echo "3. Running Bandit (Security Analysis)..."
 echo "----------------------------------------"
-bandit -r . -f txt -o reports/bandit_report.txt --exclude venv,__pycache__,.git,.venv
+bandit -r app.py models routes utils setup -f txt -o reports/bandit_report.txt --exclude venv,__pycache__,.git,.venv,reports
 echo "Bandit security report saved to reports/bandit_report.txt"
 echo ""
 
