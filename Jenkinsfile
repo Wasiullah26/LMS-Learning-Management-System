@@ -3,7 +3,7 @@ pipeline {
     
     // Automatically trigger builds when code is pushed to GitHub
     triggers {
-        pollSCM('H/1 * * * *')  // Check for changes every 1 minute (faster response)
+        pollSCM('* * * * *')  // Check for changes every minute (H/1 means once per hour, * means every minute)
     }
     
     environment {
