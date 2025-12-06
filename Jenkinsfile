@@ -170,30 +170,56 @@ pipeline {
                             echo Checking for existing S3 bucket...
                             for /f "tokens=*" %%b in ('aws elasticbeanstalk describe-application-versions --application-name ${EB_APPLICATION_NAME} --max-items 1 --region ${AWS_REGION} --query "ApplicationVersions[0].SourceBundle.S3Bucket" --output text 2^>nul') do set EB_S3_BUCKET=%%b
                             
-                            REM If no existing bucket, construct it
+                            REM Check if bucket is empty or "None" (AWS CLI returns "None" as string)
                             if "!EB_S3_BUCKET!"=="" (
                                 set EB_S3_BUCKET=elasticbeanstalk-${AWS_REGION}-!AWS_ACCOUNT_ID!
                                 echo Constructed bucket: !EB_S3_BUCKET!
+                            ) else if "!EB_S3_BUCKET!"=="None" (
+                                set EB_S3_BUCKET=elasticbeanstalk-${AWS_REGION}-!AWS_ACCOUNT_ID!
+                                echo Bucket was None, constructed bucket: !EB_S3_BUCKET!
                             ) else (
                                 echo Found existing bucket: !EB_S3_BUCKET!
                             )
                             
                             set VERSION_LABEL=app-${BUILD_NUMBER}
                             
+                            REM Check if bucket exists, create if it doesn't
+                            echo Checking if S3 bucket exists...
+                            aws s3 ls "s3://!EB_S3_BUCKET!" --region ${AWS_REGION} >nul 2>&1
+                            if errorlevel 1 (
+                                echo Bucket does not exist, creating it...
+                                aws s3 mb "s3://!EB_S3_BUCKET!" --region ${AWS_REGION}
+                                if errorlevel 1 (
+                                    echo ERROR: Failed to create S3 bucket
+                                    echo Please check AWS permissions
+                                    exit /b 1
+                                )
+                                echo Successfully created bucket: !EB_S3_BUCKET!
+                            ) else (
+                                echo Bucket already exists: !EB_S3_BUCKET!
+                            )
+                            
                             REM Upload to S3
                             echo Uploading ${DEPLOY_ZIP} to S3...
                             aws s3 cp "${DEPLOY_ZIP}" "s3://!EB_S3_BUCKET!/${DEPLOY_ZIP}" --region ${AWS_REGION}
                             if errorlevel 1 (
-                                echo WARNING: Upload failed, but continuing (EB may create bucket automatically)
+                                echo ERROR: Failed to upload to S3
+                                echo Please check AWS permissions and bucket access
+                                exit /b 1
                             )
+                            echo Successfully uploaded to S3
                             
                             REM Create application version
                             echo Creating application version: !VERSION_LABEL!
                             aws elasticbeanstalk create-application-version --application-name ${EB_APPLICATION_NAME} --version-label !VERSION_LABEL! --source-bundle S3Bucket=!EB_S3_BUCKET!,S3Key=${DEPLOY_ZIP} --region ${AWS_REGION}
                             if errorlevel 1 (
                                 echo ERROR: Failed to create application version
+                                echo This may be due to AWS Academy Learner Lab permission restrictions
+                                echo Required permission: elasticbeanstalk:CreateApplicationVersion
+                                echo Please check your IAM role permissions
                                 exit /b 1
                             )
+                            echo Application version created successfully
                             
                             REM Update environment
                             echo Updating environment ${EB_ENVIRONMENT_NAME}...
