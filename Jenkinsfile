@@ -177,41 +177,55 @@ pipeline {
                                 
                                 REM Get AWS account ID for S3 bucket name
                                 echo Getting AWS account information...
-                                for /f "tokens=*" %%a in ('aws sts get-caller-identity --query Account --output text 2^>nul') do set AWS_ACCOUNT_ID=%%a
+                                for /f "tokens=*" %%a in ('aws sts get-caller-identity --query Account --output text --region ${AWS_REGION} 2^>nul') do set AWS_ACCOUNT_ID=%%a
                                 
-                                REM Elastic Beanstalk S3 bucket naming: elasticbeanstalk-REGION-ACCOUNT_ID
-                                set EB_S3_BUCKET=elasticbeanstalk-${AWS_REGION}-%AWS_ACCOUNT_ID%
+                                if "%AWS_ACCOUNT_ID%"=="" (
+                                    echo WARNING: Could not get AWS account ID, trying alternative method...
+                                    REM Try to get bucket from existing application version
+                                    for /f "tokens=*" %%v in ('aws elasticbeanstalk describe-application-versions --application-name ${EB_APPLICATION_NAME} --max-items 1 --region ${AWS_REGION} --query "ApplicationVersions[0].SourceBundle.S3Bucket" --output text 2^>nul') do set EB_S3_BUCKET=%%v
+                                ) else (
+                                    REM Elastic Beanstalk S3 bucket naming: elasticbeanstalk-REGION-ACCOUNT_ID
+                                    set EB_S3_BUCKET=elasticbeanstalk-${AWS_REGION}-%AWS_ACCOUNT_ID%
+                                )
+                                
+                                if "%EB_S3_BUCKET%"=="" (
+                                    echo ERROR: Could not determine S3 bucket name
+                                    echo Please ensure AWS credentials have proper permissions
+                                    exit /b 1
+                                )
+                                
                                 echo Using S3 bucket: %EB_S3_BUCKET%
                                 
-                                REM Set version label
+                                REM Set version label and ZIP name
                                 set VERSION_LABEL=app-${BUILD_NUMBER}
                                 set ZIP_NAME=lms-deployment-${BUILD_NUMBER}.zip
                                 
                                 REM Upload ZIP to S3
                                 echo Uploading deployment package to S3...
-                                aws s3 cp %ZIP_NAME% s3://%EB_S3_BUCKET%/%ZIP_NAME% --region ${AWS_REGION}
+                                echo Source: %ZIP_NAME%
+                                echo Destination: s3://%EB_S3_BUCKET%/%ZIP_NAME%
+                                aws s3 cp "%ZIP_NAME%" "s3://%EB_S3_BUCKET%/%ZIP_NAME%" --region ${AWS_REGION}
                                 if errorlevel 1 (
                                     echo ERROR: Failed to upload to S3
-                                    echo Trying alternative bucket naming...
-                                    REM Try getting bucket from application
-                                    for /f "tokens=*" %%b in ('aws elasticbeanstalk describe-applications --application-names ${EB_APPLICATION_NAME} --region ${AWS_REGION} --query "Applications[0].ResourceLifecycleConfig.ServiceRole" --output text 2^>nul') do set EB_S3_BUCKET=%%b
-                                    if "%EB_S3_BUCKET%"=="" (
-                                        echo ERROR: Could not determine S3 bucket. Please check AWS permissions.
-                                        exit /b 1
-                                    )
-                                    aws s3 cp %ZIP_NAME% s3://%EB_S3_BUCKET%/%ZIP_NAME% --region ${AWS_REGION}
+                                    echo Checking if bucket exists...
+                                    aws s3 ls s3://%EB_S3_BUCKET% --region ${AWS_REGION} 2^>nul
                                     if errorlevel 1 (
-                                        echo ERROR: Failed to upload to S3 bucket: %EB_S3_BUCKET%
-                                        exit /b 1
+                                        echo Bucket does not exist. Elastic Beanstalk will create it automatically.
+                                        echo Trying to create application version directly...
+                                        goto :create_version_direct
                                     )
+                                    exit /b 1
                                 )
                                 echo Successfully uploaded to S3
                                 
+                                :create_version_direct
                                 REM Create application version
                                 echo Creating application version: %VERSION_LABEL%
                                 aws elasticbeanstalk create-application-version --application-name ${EB_APPLICATION_NAME} --version-label %VERSION_LABEL% --source-bundle S3Bucket=%EB_S3_BUCKET%,S3Key=%ZIP_NAME% --region ${AWS_REGION}
                                 if errorlevel 1 (
                                     echo ERROR: Failed to create application version
+                                    echo This might be because the bucket doesn't exist yet
+                                    echo Elastic Beanstalk will create the bucket on first deployment
                                     exit /b 1
                                 )
                                 echo Application version created successfully
@@ -227,6 +241,7 @@ pipeline {
                                 echo ========================================
                                 echo Deployment initiated successfully!
                                 echo Version: %VERSION_LABEL%
+                                echo S3 Bucket: %EB_S3_BUCKET%
                                 echo Check AWS Console for deployment status.
                                 echo ========================================
                                 exit /b 0
