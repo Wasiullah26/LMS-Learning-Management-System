@@ -1,0 +1,4 @@
+[bandit]
+exclude_dirs = venv,__pycache__,.git,.venv
+skips = B101,B601
+

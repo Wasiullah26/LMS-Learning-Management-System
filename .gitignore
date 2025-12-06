@@ -1,0 +1,91 @@
+
+backend/venv/
+backend/.venv/
+backend/env/
+backend/ENV/
+
+# Python cache files - these are auto-generated
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# ============================================
+# Environment Variables - CRITICAL!
+# ============================================
+# NEVER commit these - they contain AWS credentials and secrets!
+.env
+.env.local
+.env.*.local
+*.env
+backend/.env
+frontend/.env
+
+# But keep the example files so others know what variables are needed
+!.env.example
+!backend/.env.example
+!frontend/.env.example
+
+# ============================================
+# Analysis Reports
+# ============================================
+# These are generated files from static code analysis
+# Don't need to commit them - can be regenerated
+backend/reports/
+*.log
+
+# ============================================
+# Node.js Frontend
+# ============================================
+# Don't commit node_modules - it's huge, install with npm install
+frontend/node_modules/
+frontend/.pnp
+frontend/.pnp.js
+
+# Build outputs - these are generated when building the app
+frontend/dist/
+frontend/build/
+frontend/.vite/
+
+# ============================================
+# IDE and Editor Files
+# ============================================
+# Different developers use different editors
+.idea/
+*.iml
+.vscode/
+*.code-workspace
+.DS_Store
+
+# ============================================
+# OS Files
+# ============================================
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ============================================
+# AWS Credentials
+# ============================================
+# Never commit AWS credentials!
+.aws/
+*.pem
+*.key
+
+# ============================================
+# Keep Important Files
+# ============================================
+# Make sure these important files ARE committed
+!backend/requirements.txt
+!backend/requirements-dev.txt
+!frontend/package.json
+!frontend/package-lock.json
+

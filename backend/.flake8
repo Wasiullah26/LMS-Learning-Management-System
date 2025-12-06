@@ -1,0 +1,19 @@
+[flake8]
+max-line-length = 120
+exclude = 
+    venv,
+    __pycache__,
+    .git,
+    migrations,
+    *.pyc,
+    .venv
+ignore = 
+    E203,
+    E501,
+    W503,
+    F401,
+    F403,
+    F405
+per-file-ignores =
+    __init__.py:F401,F403
+
