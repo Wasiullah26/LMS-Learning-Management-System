@@ -155,54 +155,52 @@ pipeline {
                                 echo AWS Session Token set
                             )
                             
-                            REM Find Python and install EB CLI
+                            REM Find Python using PowerShell (more reliable)
                             echo Finding Python...
-                            set PYTHON_CMD=
-                            where python >nul 2>&1 && set PYTHON_CMD=python
-                            if not defined PYTHON_CMD where py >nul 2>&1 && set PYTHON_CMD=py
-                            if not defined PYTHON_CMD if exist C:\\Python310\\python.exe set PYTHON_CMD=C:\\Python310\\python.exe
-                            if not defined PYTHON_CMD if exist C:\\Users\\%USERNAME%\\anaconda3\\python.exe set PYTHON_CMD=C:\\Users\\%USERNAME%\\anaconda3\\python.exe
-                            if not defined PYTHON_CMD if exist C:\\Python311\\python.exe set PYTHON_CMD=C:\\Python311\\python.exe
+                            for /f "delims=" %%p in ('powershell -Command "Get-Command python -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source"') do set PYTHON_CMD=%%p
+                            if not defined PYTHON_CMD for /f "delims=" %%p in ('powershell -Command "Get-Command py -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source"') do set PYTHON_CMD=%%p
                             
                             if not defined PYTHON_CMD (
-                                echo ERROR: Python not found. Trying alternative deployment method...
-                                echo Attempting to use AWS CLI directly...
-                                goto :deploy_with_aws_cli
+                                echo WARNING: Python not found in PATH
+                                echo Attempting to find Python in common locations...
+                                if exist C:\\Python310\\python.exe set PYTHON_CMD=C:\\Python310\\python.exe
+                                if not defined PYTHON_CMD if exist C:\\Python311\\python.exe set PYTHON_CMD=C:\\Python311\\python.exe
+                                if not defined PYTHON_CMD if exist C:\\Users\\%USERNAME%\\anaconda3\\python.exe set PYTHON_CMD=C:\\Users\\%USERNAME%\\anaconda3\\python.exe
+                                if not defined PYTHON_CMD if exist C:\\Users\\%USERNAME%\\AppData\\Local\\Programs\\Python\\Python310\\python.exe set PYTHON_CMD=C:\\Users\\%USERNAME%\\AppData\\Local\\Programs\\Python\\Python310\\python.exe
+                            )
+                            
+                            if not defined PYTHON_CMD (
+                                echo ERROR: Python not found. Cannot install EB CLI.
+                                echo Please install Python or configure it in Jenkins PATH.
+                                echo Skipping deployment.
+                                exit /b 0
                             )
                             
                             echo Found Python: %PYTHON_CMD%
                             echo Installing EB CLI...
-                            %PYTHON_CMD% -m pip install awsebcli --user
+                            "%PYTHON_CMD%" -m pip install awsebcli --user --quiet
                             if errorlevel 1 (
                                 echo ERROR: Failed to install EB CLI
-                                echo Trying alternative deployment method...
-                                goto :deploy_with_aws_cli
+                                exit /b 1
                             )
                             
-                            REM Verify EB CLI installation
-                            %USERPROFILE%\\AppData\\Roaming\\Python\\Python*\\Scripts\\eb.exe --version 2>nul || %USERPROFILE%\\AppData\\Local\\Programs\\Python\\Python*\\Scripts\\eb.exe --version 2>nul || python -m awsebcli --version
-                            if errorlevel 1 (
-                                echo Warning: EB CLI verification failed, but continuing...
-                            )
-                            
-                            REM Set EB CLI path
+                            REM Find EB CLI executable
                             set EB_CMD=eb
-                            if exist %USERPROFILE%\\AppData\\Roaming\\Python\\Python*\\Scripts\\eb.exe (
-                                for /f "delims=" %%i in ('dir /b /s %USERPROFILE%\\AppData\\Roaming\\Python\\Python*\\Scripts\\eb.exe 2^>nul') do set EB_CMD=%%i
+                            for /f "delims=" %%e in ('powershell -Command "Get-Command eb -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source"') do set EB_CMD=%%e
+                            if "%EB_CMD%"=="eb" (
+                                REM Try common locations
+                                if exist "%USERPROFILE%\\AppData\\Roaming\\Python\\Python*\\Scripts\\eb.exe" (
+                                    for /f "delims=" %%e in ('dir /b /s "%USERPROFILE%\\AppData\\Roaming\\Python\\Python*\\Scripts\\eb.exe" 2^>nul') do set EB_CMD=%%e
+                                )
+                                if "%EB_CMD%"=="eb" if exist "%USERPROFILE%\\AppData\\Local\\Programs\\Python\\Python*\\Scripts\\eb.exe" (
+                                    for /f "delims=" %%e in ('dir /b /s "%USERPROFILE%\\AppData\\Local\\Programs\\Python\\Python*\\Scripts\\eb.exe" 2^>nul') do set EB_CMD=%%e
+                                )
+                                REM If still not found, try python -m awsebcli
+                                if "%EB_CMD%"=="eb" set EB_CMD=%PYTHON_CMD% -m awsebcli
                             )
-                            if not exist "%EB_CMD%" if exist %USERPROFILE%\\AppData\\Local\\Programs\\Python\\Python*\\Scripts\\eb.exe (
-                                for /f "delims=" %%i in ('dir /b /s %USERPROFILE%\\AppData\\Local\\Programs\\Python\\Python*\\Scripts\\eb.exe 2^>nul') do set EB_CMD=%%i
-                            )
                             
-                            goto :deploy_with_eb
-                            
-                            :deploy_with_aws_cli
-                            echo Using AWS CLI for deployment...
-                            echo This requires manual setup or EB CLI installation
-                            echo Skipping deployment - please deploy manually or install Python/EB CLI
-                            exit /b 0
-                            
-                            :deploy_with_eb
+                            echo Using EB CLI: %EB_CMD%
+                            "%EB_CMD%" --version
                             
                             REM Copy .elasticbeanstalk config to deploy directory
                             echo Setting up EB configuration...
@@ -218,12 +216,16 @@ pipeline {
                             echo Deploying to ${EB_ENVIRONMENT_NAME}...
                             cd deploy
                             
-                            REM Try to use the environment
+                            REM Try to use the environment (optional)
                             "%EB_CMD%" use ${EB_ENVIRONMENT_NAME} 2>&1 || echo Warning: Could not set EB environment, continuing...
                             
                             REM Deploy
                             echo Running eb deploy...
-                            "%EB_CMD%" deploy ${EB_ENVIRONMENT_NAME} --staged 2>&1 || "%EB_CMD%" deploy ${EB_ENVIRONMENT_NAME} 2>&1
+                            "%EB_CMD%" deploy ${EB_ENVIRONMENT_NAME} --staged 2>&1
+                            if errorlevel 1 (
+                                echo Staged deploy failed, trying regular deploy...
+                                "%EB_CMD%" deploy ${EB_ENVIRONMENT_NAME} 2>&1
+                            )
                             set DEPLOY_EXIT_CODE=%ERRORLEVEL%
                             
                             if %DEPLOY_EXIT_CODE% neq 0 (
