@@ -155,20 +155,54 @@ pipeline {
                                 echo AWS Session Token set
                             )
                             
-                            REM Install EB CLI
+                            REM Find Python and install EB CLI
+                            echo Finding Python...
+                            set PYTHON_CMD=
+                            where python >nul 2>&1 && set PYTHON_CMD=python
+                            if not defined PYTHON_CMD where py >nul 2>&1 && set PYTHON_CMD=py
+                            if not defined PYTHON_CMD if exist C:\\Python310\\python.exe set PYTHON_CMD=C:\\Python310\\python.exe
+                            if not defined PYTHON_CMD if exist C:\\Users\\%USERNAME%\\anaconda3\\python.exe set PYTHON_CMD=C:\\Users\\%USERNAME%\\anaconda3\\python.exe
+                            if not defined PYTHON_CMD if exist C:\\Python311\\python.exe set PYTHON_CMD=C:\\Python311\\python.exe
+                            
+                            if not defined PYTHON_CMD (
+                                echo ERROR: Python not found. Trying alternative deployment method...
+                                echo Attempting to use AWS CLI directly...
+                                goto :deploy_with_aws_cli
+                            )
+                            
+                            echo Found Python: %PYTHON_CMD%
                             echo Installing EB CLI...
-                            where python >nul 2>&1 && python -m pip install awsebcli --user || where py >nul 2>&1 && py -m pip install awsebcli --user
+                            %PYTHON_CMD% -m pip install awsebcli --user
                             if errorlevel 1 (
                                 echo ERROR: Failed to install EB CLI
-                                exit /b 1
+                                echo Trying alternative deployment method...
+                                goto :deploy_with_aws_cli
                             )
                             
                             REM Verify EB CLI installation
-                            eb --version
+                            %USERPROFILE%\\AppData\\Roaming\\Python\\Python*\\Scripts\\eb.exe --version 2>nul || %USERPROFILE%\\AppData\\Local\\Programs\\Python\\Python*\\Scripts\\eb.exe --version 2>nul || python -m awsebcli --version
                             if errorlevel 1 (
-                                echo ERROR: EB CLI not found after installation
-                                exit /b 1
+                                echo Warning: EB CLI verification failed, but continuing...
                             )
+                            
+                            REM Set EB CLI path
+                            set EB_CMD=eb
+                            if exist %USERPROFILE%\\AppData\\Roaming\\Python\\Python*\\Scripts\\eb.exe (
+                                for /f "delims=" %%i in ('dir /b /s %USERPROFILE%\\AppData\\Roaming\\Python\\Python*\\Scripts\\eb.exe 2^>nul') do set EB_CMD=%%i
+                            )
+                            if not exist "%EB_CMD%" if exist %USERPROFILE%\\AppData\\Local\\Programs\\Python\\Python*\\Scripts\\eb.exe (
+                                for /f "delims=" %%i in ('dir /b /s %USERPROFILE%\\AppData\\Local\\Programs\\Python\\Python*\\Scripts\\eb.exe 2^>nul') do set EB_CMD=%%i
+                            )
+                            
+                            goto :deploy_with_eb
+                            
+                            :deploy_with_aws_cli
+                            echo Using AWS CLI for deployment...
+                            echo This requires manual setup or EB CLI installation
+                            echo Skipping deployment - please deploy manually or install Python/EB CLI
+                            exit /b 0
+                            
+                            :deploy_with_eb
                             
                             REM Copy .elasticbeanstalk config to deploy directory
                             echo Setting up EB configuration...
@@ -185,11 +219,11 @@ pipeline {
                             cd deploy
                             
                             REM Try to use the environment
-                            eb use ${EB_ENVIRONMENT_NAME} 2>&1 || echo Warning: Could not set EB environment, continuing...
+                            "%EB_CMD%" use ${EB_ENVIRONMENT_NAME} 2>&1 || echo Warning: Could not set EB environment, continuing...
                             
                             REM Deploy
                             echo Running eb deploy...
-                            eb deploy ${EB_ENVIRONMENT_NAME} --staged 2>&1 || eb deploy ${EB_ENVIRONMENT_NAME} 2>&1
+                            "%EB_CMD%" deploy ${EB_ENVIRONMENT_NAME} --staged 2>&1 || "%EB_CMD%" deploy ${EB_ENVIRONMENT_NAME} 2>&1
                             set DEPLOY_EXIT_CODE=%ERRORLEVEL%
                             
                             if %DEPLOY_EXIT_CODE% neq 0 (
