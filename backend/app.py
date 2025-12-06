@@ -1,16 +1,8 @@
-"""
-Main Flask application
-"""
-
 from flask import Flask, jsonify
 from flask_cors import CORS
 from config import config
 import os
-
-# Import AWS setup function
 from setup.aws_setup import setup_aws_resources
-
-# Import blueprints
 from routes.auth import auth_bp
 from routes.users import users_bp
 from routes.courses import courses_bp
@@ -22,32 +14,23 @@ from routes.admin import admin_bp
 
 
 def create_app(config_name=None):
-    """Create and configure Flask application"""
     app = Flask(__name__)
-    
-    # Load configuration
+
     config_name = config_name or os.getenv('FLASK_ENV', 'development')
     app.config.from_object(config[config_name])
-    
-    # Set up AWS resources (check if exists, create if not)
-    # This runs automatically on app startup
+
+    # setup aws stuff when server starts
     print("Initializing AWS resources...")
     success, message = setup_aws_resources(silent=False)
     if success:
         print("✓ AWS resources ready")
     else:
         print(f"⚠ {message}")
-    
-    # Seed initial data (admin, specializations, courses) if they don't exist
-    print("Initializing database...")
-    with app.app_context():
-        from setup.database_seeder import seed_database
-        seed_database(silent=False)
-    
-    # Enable CORS
+
+    # enable cors for frontend
     CORS(app, origins=app.config['CORS_ORIGINS'], supports_credentials=True)
-    
-    # Register blueprints
+
+    # register all the routes
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(users_bp, url_prefix='/api/users')
     app.register_blueprint(courses_bp, url_prefix='/api/courses')
@@ -56,13 +39,11 @@ def create_app(config_name=None):
     app.register_blueprint(progress_bp, url_prefix='/api/progress')
     app.register_blueprint(upload_bp, url_prefix='/api/upload')
     app.register_blueprint(admin_bp, url_prefix='/api/admin')
-    
-    # Health check endpoint
+
     @app.route('/api/health', methods=['GET'])
     def health_check():
         return jsonify({'status': 'healthy', 'message': 'LMS API is running'}), 200
-    
-    # Root endpoint
+
     @app.route('/', methods=['GET'])
     def root():
         return jsonify({
@@ -79,16 +60,15 @@ def create_app(config_name=None):
                 'upload': '/api/upload'
             }
         }), 200
-    
-    # Error handlers
+
     @app.errorhandler(404)
-    def not_found(error):
+    def not_found(_error):
         return jsonify({'error': 'Endpoint not found'}), 404
-    
+
     @app.errorhandler(500)
-    def internal_error(error):
+    def internal_error(_error):
         return jsonify({'error': 'Internal server error'}), 500
-    
+
     return app
 
 
