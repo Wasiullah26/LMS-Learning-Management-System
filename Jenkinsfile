@@ -163,26 +163,55 @@ pipeline {
                                 exit /b 1
                             )
                             
+                            REM Verify EB CLI installation
+                            eb --version
+                            if errorlevel 1 (
+                                echo ERROR: EB CLI not found after installation
+                                exit /b 1
+                            )
+                            
                             REM Copy .elasticbeanstalk config to deploy directory
                             echo Setting up EB configuration...
                             if not exist deploy\\.elasticbeanstalk mkdir deploy\\.elasticbeanstalk
-                            if exist .elasticbeanstalk\\config.yml copy /Y .elasticbeanstalk\\config.yml deploy\\.elasticbeanstalk\\config.yml
+                            if exist .elasticbeanstalk\\config.yml (
+                                copy /Y .elasticbeanstalk\\config.yml deploy\\.elasticbeanstalk\\config.yml
+                                echo EB config copied
+                            ) else (
+                                echo Warning: .elasticbeanstalk\\config.yml not found
+                            )
                             
                             REM Deploy to Elastic Beanstalk
                             echo Deploying to ${EB_ENVIRONMENT_NAME}...
                             cd deploy
-                            eb --version
-                            eb use ${EB_ENVIRONMENT_NAME} || echo Warning: Could not set EB environment
-                            eb deploy ${EB_ENVIRONMENT_NAME} --staged || eb deploy ${EB_ENVIRONMENT_NAME}
-                            if errorlevel 1 (
-                                echo ERROR: Deployment failed
+                            
+                            REM Try to use the environment
+                            eb use ${EB_ENVIRONMENT_NAME} 2>&1 || echo Warning: Could not set EB environment, continuing...
+                            
+                            REM Deploy
+                            echo Running eb deploy...
+                            eb deploy ${EB_ENVIRONMENT_NAME} --staged 2>&1 || eb deploy ${EB_ENVIRONMENT_NAME} 2>&1
+                            set DEPLOY_EXIT_CODE=%ERRORLEVEL%
+                            
+                            if %DEPLOY_EXIT_CODE% neq 0 (
+                                echo ERROR: Deployment failed with exit code %DEPLOY_EXIT_CODE%
                                 cd ..
-                                exit /b 1
+                                exit /b %DEPLOY_EXIT_CODE%
                             )
+                            
+                            echo ========================================
                             echo Deployment completed successfully!
+                            echo ========================================
                             cd ..
                         """
                     }
+                }
+            }
+            post {
+                success {
+                    echo 'Deployment to Elastic Beanstalk succeeded!'
+                }
+                failure {
+                    echo 'Deployment to Elastic Beanstalk failed! Check logs above.'
                 }
             }
         }
