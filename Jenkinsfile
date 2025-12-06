@@ -177,21 +177,28 @@ pipeline {
                                 
                                 REM Get AWS account ID for S3 bucket name
                                 echo Getting AWS account information...
-                                for /f "tokens=*" %%a in ('aws sts get-caller-identity --query Account --output text --region ${AWS_REGION} 2^>nul') do set AWS_ACCOUNT_ID=%%a
+                                powershell -Command "$account = aws sts get-caller-identity --query Account --output text 2>$null; if ($account) { Write-Host $account.Trim() }" > %TEMP%\\aws_account.txt
+                                set /p AWS_ACCOUNT_ID=<%TEMP%\\aws_account.txt
+                                del %TEMP%\\aws_account.txt
                                 
-                                if "%AWS_ACCOUNT_ID%"=="" (
-                                    echo WARNING: Could not get AWS account ID, trying alternative method...
-                                    REM Try to get bucket from existing application version
-                                    for /f "tokens=*" %%v in ('aws elasticbeanstalk describe-application-versions --application-name ${EB_APPLICATION_NAME} --max-items 1 --region ${AWS_REGION} --query "ApplicationVersions[0].SourceBundle.S3Bucket" --output text 2^>nul') do set EB_S3_BUCKET=%%v
-                                ) else (
-                                    REM Elastic Beanstalk S3 bucket naming: elasticbeanstalk-REGION-ACCOUNT_ID
-                                    set EB_S3_BUCKET=elasticbeanstalk-${AWS_REGION}-%AWS_ACCOUNT_ID%
-                                )
+                                REM Try to get bucket from existing application version first
+                                echo Checking for existing S3 bucket...
+                                powershell -Command "$bucket = aws elasticbeanstalk describe-application-versions --application-name ${EB_APPLICATION_NAME} --max-items 1 --region ${AWS_REGION} --query 'ApplicationVersions[0].SourceBundle.S3Bucket' --output text 2>$null; if ($bucket -and $bucket -ne 'None') { Write-Host $bucket.Trim() }" > %TEMP%\\eb_bucket.txt
+                                set /p EB_S3_BUCKET=<%TEMP%\\eb_bucket.txt
+                                del %TEMP%\\eb_bucket.txt
                                 
+                                REM If no existing bucket, construct bucket name from account ID
                                 if "%EB_S3_BUCKET%"=="" (
-                                    echo ERROR: Could not determine S3 bucket name
-                                    echo Please ensure AWS credentials have proper permissions
-                                    exit /b 1
+                                    if not "%AWS_ACCOUNT_ID%"=="" (
+                                        set EB_S3_BUCKET=elasticbeanstalk-${AWS_REGION}-%AWS_ACCOUNT_ID%
+                                        echo Constructed bucket name from account ID
+                                    ) else (
+                                        echo ERROR: Could not get AWS account ID
+                                        echo Please ensure AWS credentials have proper permissions
+                                        exit /b 1
+                                    )
+                                ) else (
+                                    echo Found existing bucket from previous deployment
                                 )
                                 
                                 echo Using S3 bucket: %EB_S3_BUCKET%
@@ -206,26 +213,19 @@ pipeline {
                                 echo Destination: s3://%EB_S3_BUCKET%/%ZIP_NAME%
                                 aws s3 cp "%ZIP_NAME%" "s3://%EB_S3_BUCKET%/%ZIP_NAME%" --region ${AWS_REGION}
                                 if errorlevel 1 (
-                                    echo ERROR: Failed to upload to S3
-                                    echo Checking if bucket exists...
-                                    aws s3 ls s3://%EB_S3_BUCKET% --region ${AWS_REGION} 2^>nul
-                                    if errorlevel 1 (
-                                        echo Bucket does not exist. Elastic Beanstalk will create it automatically.
-                                        echo Trying to create application version directly...
-                                        goto :create_version_direct
-                                    )
-                                    exit /b 1
+                                    echo WARNING: Failed to upload to S3, bucket may not exist
+                                    echo Elastic Beanstalk will create bucket automatically when creating version
+                                    echo Proceeding to create application version...
+                                ) else (
+                                    echo Successfully uploaded to S3
                                 )
-                                echo Successfully uploaded to S3
                                 
-                                :create_version_direct
-                                REM Create application version
+                                REM Create application version (EB will create bucket if needed)
                                 echo Creating application version: %VERSION_LABEL%
-                                aws elasticbeanstalk create-application-version --application-name ${EB_APPLICATION_NAME} --version-label %VERSION_LABEL% --source-bundle S3Bucket=%EB_S3_BUCKET%,S3Key=%ZIP_NAME% --region ${AWS_REGION}
+                                aws elasticbeanstalk create-application-version --application-name ${EB_APPLICATION_NAME} --version-label %VERSION_LABEL% --source-bundle S3Bucket=%EB_S3_BUCKET%,S3Key=%ZIP_NAME% --auto-create-application --region ${AWS_REGION}
                                 if errorlevel 1 (
                                     echo ERROR: Failed to create application version
-                                    echo This might be because the bucket doesn't exist yet
-                                    echo Elastic Beanstalk will create the bucket on first deployment
+                                    echo Check AWS permissions and credentials
                                     exit /b 1
                                 )
                                 echo Application version created successfully
@@ -235,6 +235,7 @@ pipeline {
                                 aws elasticbeanstalk update-environment --application-name ${EB_APPLICATION_NAME} --environment-name ${EB_ENVIRONMENT_NAME} --version-label %VERSION_LABEL% --region ${AWS_REGION}
                                 if errorlevel 1 (
                                     echo ERROR: Failed to update environment
+                                    echo Environment may already be updating or credentials may be invalid
                                     exit /b 1
                                 )
                                 
