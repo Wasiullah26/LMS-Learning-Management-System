@@ -5,45 +5,20 @@ Elastic Beanstalk application entry point.
 import sys
 import os
 
-# Determine the base directory (where this file is located)
+# Get the directory where this file is located
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BACKEND_DIR = os.path.join(BASE_DIR, 'backend')
 
-# Debug: Print paths (will be in logs)
-print(f"BASE_DIR: {BASE_DIR}")
-print(f"BACKEND_DIR: {BACKEND_DIR}")
-print(f"BACKEND_DIR exists: {os.path.exists(BACKEND_DIR)}")
-print(f"sys.path before: {sys.path}")
-
-# Add backend directory to Python path
-if BACKEND_DIR not in sys.path:
+# Add backend directory to Python path - this must happen before any imports
+if os.path.exists(BACKEND_DIR) and BACKEND_DIR not in sys.path:
     sys.path.insert(0, BACKEND_DIR)
 
-# Also add base directory
-if BASE_DIR not in sys.path:
-    sys.path.insert(0, BASE_DIR)
+# Now import from app (which is in backend/app.py)
+# This import must work for the module to load
+from app import create_app
 
-print(f"sys.path after: {sys.path}")
-
-# Try to import
-try:
-    from app import create_app
-    print("Successfully imported create_app")
-except ImportError as e:
-    print(f"Import error: {e}")
-    # List files in backend directory for debugging
-    if os.path.exists(BACKEND_DIR):
-        print(f"Files in backend: {os.listdir(BACKEND_DIR)}")
-    raise
-
-# Create the application instance
-# EB looks for 'application' variable
-try:
-    application = create_app()
-    print("Successfully created application")
-except Exception as e:
-    print(f"Error creating app: {e}")
-    raise
+# EB looks for 'application' variable - this is what gunicorn will use
+application = create_app()
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
