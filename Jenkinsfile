@@ -1,6 +1,11 @@
 pipeline {
     agent any
     
+    // Automatically trigger builds when code is pushed to GitHub
+    triggers {
+        pollSCM('H/5 * * * *')  // Check for changes every 5 minutes
+    }
+    
     environment {
         AWS_REGION = 'us-east-1'
         EB_APPLICATION_NAME = 'lms-application'
