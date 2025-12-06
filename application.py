@@ -1,24 +1,50 @@
+#!/usr/bin/env python3
+"""
+Elastic Beanstalk application entry point.
+"""
 import sys
 import os
 
-# Get the directory where this file is located
-current_dir = os.path.dirname(os.path.abspath(__file__))
-backend_dir = os.path.join(current_dir, 'backend')
+# Determine the base directory (where this file is located)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BACKEND_DIR = os.path.join(BASE_DIR, 'backend')
 
-# Add backend directory to Python path so imports work
-if backend_dir not in sys.path:
-    sys.path.insert(0, backend_dir)
+# Debug: Print paths (will be in logs)
+print(f"BASE_DIR: {BASE_DIR}")
+print(f"BACKEND_DIR: {BACKEND_DIR}")
+print(f"BACKEND_DIR exists: {os.path.exists(BACKEND_DIR)}")
+print(f"sys.path before: {sys.path}")
 
-# Also add the parent directory for relative imports
-if current_dir not in sys.path:
-    sys.path.insert(0, current_dir)
+# Add backend directory to Python path
+if BACKEND_DIR not in sys.path:
+    sys.path.insert(0, BACKEND_DIR)
 
-# Now import from app (which is in backend/app.py)
-from app import create_app
+# Also add base directory
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
 
-# EB looks for 'application' by default
-application = create_app()
+print(f"sys.path after: {sys.path}")
+
+# Try to import
+try:
+    from app import create_app
+    print("Successfully imported create_app")
+except ImportError as e:
+    print(f"Import error: {e}")
+    # List files in backend directory for debugging
+    if os.path.exists(BACKEND_DIR):
+        print(f"Files in backend: {os.listdir(BACKEND_DIR)}")
+    raise
+
+# Create the application instance
+# EB looks for 'application' variable
+try:
+    application = create_app()
+    print("Successfully created application")
+except Exception as e:
+    print(f"Error creating app: {e}")
+    raise
 
 if __name__ == "__main__":
-    application.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
-
+    port = int(os.environ.get("PORT", 5000))
+    application.run(host="0.0.0.0", port=port)
