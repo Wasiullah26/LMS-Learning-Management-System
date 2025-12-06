@@ -170,10 +170,9 @@ pipeline {
                             )
                             
                             if not defined PYTHON_CMD (
-                                echo ERROR: Python not found. Cannot install EB CLI.
-                                echo Please install Python or configure it in Jenkins PATH.
-                                echo Skipping deployment.
-                                exit /b 0
+                                echo WARNING: Python not found. Cannot install EB CLI.
+                                echo Attempting alternative deployment using AWS CLI...
+                                goto :deploy_with_aws_cli
                             )
                             
                             echo Found Python: %PYTHON_CMD%
@@ -244,7 +243,16 @@ pipeline {
             }
             post {
                 success {
-                    echo 'Deployment to Elastic Beanstalk succeeded!'
+                    script {
+                        // Check if deployment was actually attempted or skipped
+                        def log = currentBuild.rawBuild.getLog(100)
+                        def skipped = log.any { it.contains('Skipping deployment') || it.contains('Python not found') }
+                        if (!skipped) {
+                            echo 'Deployment to Elastic Beanstalk succeeded!'
+                        } else {
+                            echo 'WARNING: Deployment was skipped - Python not found. Install Python on Jenkins server or use AWS CLI method.'
+                        }
+                    }
                 }
                 failure {
                     echo 'Deployment to Elastic Beanstalk failed! Check logs above.'
