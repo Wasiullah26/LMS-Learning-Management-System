@@ -169,12 +169,70 @@ pipeline {
                                 if not defined PYTHON_CMD if exist C:\\Users\\%USERNAME%\\AppData\\Local\\Programs\\Python\\Python310\\python.exe set PYTHON_CMD=C:\\Users\\%USERNAME%\\AppData\\Local\\Programs\\Python\\Python310\\python.exe
                             )
                             
+                            REM Check if Python is available for EB CLI
                             if not defined PYTHON_CMD (
-                                echo WARNING: Python not found. Cannot install EB CLI.
-                                echo Attempting alternative deployment using AWS CLI...
-                                goto :deploy_with_aws_cli
+                                echo ========================================
+                                echo Python not found - Using AWS CLI for deployment
+                                echo ========================================
+                                
+                                REM Get AWS account ID for S3 bucket name
+                                echo Getting AWS account information...
+                                for /f "tokens=*" %%a in ('aws sts get-caller-identity --query Account --output text 2^>nul') do set AWS_ACCOUNT_ID=%%a
+                                
+                                REM Elastic Beanstalk S3 bucket naming: elasticbeanstalk-REGION-ACCOUNT_ID
+                                set EB_S3_BUCKET=elasticbeanstalk-${AWS_REGION}-%AWS_ACCOUNT_ID%
+                                echo Using S3 bucket: %EB_S3_BUCKET%
+                                
+                                REM Set version label
+                                set VERSION_LABEL=app-${BUILD_NUMBER}
+                                set ZIP_NAME=lms-deployment-${BUILD_NUMBER}.zip
+                                
+                                REM Upload ZIP to S3
+                                echo Uploading deployment package to S3...
+                                aws s3 cp %ZIP_NAME% s3://%EB_S3_BUCKET%/%ZIP_NAME% --region ${AWS_REGION}
+                                if errorlevel 1 (
+                                    echo ERROR: Failed to upload to S3
+                                    echo Trying alternative bucket naming...
+                                    REM Try getting bucket from application
+                                    for /f "tokens=*" %%b in ('aws elasticbeanstalk describe-applications --application-names ${EB_APPLICATION_NAME} --region ${AWS_REGION} --query "Applications[0].ResourceLifecycleConfig.ServiceRole" --output text 2^>nul') do set EB_S3_BUCKET=%%b
+                                    if "%EB_S3_BUCKET%"=="" (
+                                        echo ERROR: Could not determine S3 bucket. Please check AWS permissions.
+                                        exit /b 1
+                                    )
+                                    aws s3 cp %ZIP_NAME% s3://%EB_S3_BUCKET%/%ZIP_NAME% --region ${AWS_REGION}
+                                    if errorlevel 1 (
+                                        echo ERROR: Failed to upload to S3 bucket: %EB_S3_BUCKET%
+                                        exit /b 1
+                                    )
+                                )
+                                echo Successfully uploaded to S3
+                                
+                                REM Create application version
+                                echo Creating application version: %VERSION_LABEL%
+                                aws elasticbeanstalk create-application-version --application-name ${EB_APPLICATION_NAME} --version-label %VERSION_LABEL% --source-bundle S3Bucket=%EB_S3_BUCKET%,S3Key=%ZIP_NAME% --region ${AWS_REGION}
+                                if errorlevel 1 (
+                                    echo ERROR: Failed to create application version
+                                    exit /b 1
+                                )
+                                echo Application version created successfully
+                                
+                                REM Update environment
+                                echo Updating environment ${EB_ENVIRONMENT_NAME} to version %VERSION_LABEL%...
+                                aws elasticbeanstalk update-environment --application-name ${EB_APPLICATION_NAME} --environment-name ${EB_ENVIRONMENT_NAME} --version-label %VERSION_LABEL% --region ${AWS_REGION}
+                                if errorlevel 1 (
+                                    echo ERROR: Failed to update environment
+                                    exit /b 1
+                                )
+                                
+                                echo ========================================
+                                echo Deployment initiated successfully!
+                                echo Version: %VERSION_LABEL%
+                                echo Check AWS Console for deployment status.
+                                echo ========================================
+                                exit /b 0
                             )
                             
+                            REM Python found - use EB CLI
                             echo Found Python: %PYTHON_CMD%
                             echo Installing EB CLI...
                             "%PYTHON_CMD%" -m pip install awsebcli --user --quiet
@@ -211,7 +269,7 @@ pipeline {
                                 echo Warning: .elasticbeanstalk\\config.yml not found
                             )
                             
-                            REM Deploy to Elastic Beanstalk
+                            REM Deploy to Elastic Beanstalk using EB CLI
                             echo Deploying to ${EB_ENVIRONMENT_NAME}...
                             cd deploy
                             
