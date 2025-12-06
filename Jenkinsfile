@@ -3,20 +3,21 @@ pipeline {
     
     // Automatically trigger builds when code is pushed to GitHub
     triggers {
-        pollSCM('* * * * *')  // Check for changes every minute (H/1 means once per hour, * means every minute)
+        pollSCM('* * * * *')  // Check for changes every minute
     }
     
     environment {
         AWS_REGION = 'us-east-1'
         EB_APPLICATION_NAME = 'lms-application'
         EB_ENVIRONMENT_NAME = 'lms-env'
-        EB_PLATFORM = 'python-3.11'  // Updated platform
+        EB_PLATFORM = 'python-3.11'
         NODE_VERSION = '18'
         PYTHON_VERSION = '3.10'
         SONAR_TOKEN = credentials('sonarcloud-token')
         SONAR_ORGANIZATION = 'wasiullah26'
         SONAR_PROJECT_KEY = 'Wasiullah26_LMS-Learning-Management-System'
         AWS_SESSION_TOKEN = credentials('aws-session-token')  // AWS Academy Learner Lab session token
+        DEPLOY_ZIP = "lms-deployment-${BUILD_NUMBER}.zip"
     }
     
     stages {
@@ -128,13 +129,13 @@ pipeline {
             steps {
                 bat """
                     cd deploy
-                    powershell -Command "Compress-Archive -Path * -DestinationPath ..\\lms-deployment-${BUILD_NUMBER}.zip -Force"
+                    powershell -Command "Compress-Archive -Path * -DestinationPath ..\\${DEPLOY_ZIP} -Force"
                     cd ..
                 """
             }
             post {
                 success {
-                    archiveArtifacts artifacts: 'lms-deployment-*.zip', allowEmptyArchive: true
+                    archiveArtifacts artifacts: "${DEPLOY_ZIP}", allowEmptyArchive: true
                 }
             }
         }
@@ -145,9 +146,7 @@ pipeline {
                     withAWS(credentials: 'aws-credentials', region: "${AWS_REGION}") {
                         bat """
                             @echo off
-                            echo ========================================
-                            echo Starting Elastic Beanstalk Deployment
-                            echo ========================================
+                            setlocal enabledelayedexpansion
                             
                             REM Set AWS session token if available
                             if defined AWS_SESSION_TOKEN (
@@ -155,181 +154,71 @@ pipeline {
                                 echo AWS Session Token set
                             )
                             
-                            REM Find Python using PowerShell (more reliable)
-                            echo Finding Python...
-                            for /f "delims=" %%p in ('powershell -Command "Get-Command python -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source"') do set PYTHON_CMD=%%p
-                            if not defined PYTHON_CMD for /f "delims=" %%p in ('powershell -Command "Get-Command py -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source"') do set PYTHON_CMD=%%p
+                            REM Get AWS account ID directly (no temp files)
+                            echo Getting AWS account ID...
+                            for /f "tokens=*" %%a in ('aws sts get-caller-identity --query Account --output text --region ${AWS_REGION} 2^>nul') do set AWS_ACCOUNT_ID=%%a
                             
-                            if not defined PYTHON_CMD (
-                                echo WARNING: Python not found in PATH
-                                echo Attempting to find Python in common locations...
-                                if exist C:\\Python310\\python.exe set PYTHON_CMD=C:\\Python310\\python.exe
-                                if not defined PYTHON_CMD if exist C:\\Python311\\python.exe set PYTHON_CMD=C:\\Python311\\python.exe
-                                if not defined PYTHON_CMD if exist C:\\Users\\%USERNAME%\\anaconda3\\python.exe set PYTHON_CMD=C:\\Users\\%USERNAME%\\anaconda3\\python.exe
-                                if not defined PYTHON_CMD if exist C:\\Users\\%USERNAME%\\AppData\\Local\\Programs\\Python\\Python310\\python.exe set PYTHON_CMD=C:\\Users\\%USERNAME%\\AppData\\Local\\Programs\\Python\\Python310\\python.exe
-                            )
-                            
-                            REM Check if Python is available for EB CLI
-                            if not defined PYTHON_CMD (
-                                echo ========================================
-                                echo Python not found - Using AWS CLI for deployment
-                                echo ========================================
-                                
-                                REM Get AWS account ID for S3 bucket name
-                                echo Getting AWS account information...
-                                powershell -Command "$account = aws sts get-caller-identity --query Account --output text 2>$null; if ($account) { Write-Host $account.Trim() }" > %TEMP%\\aws_account.txt
-                                set /p AWS_ACCOUNT_ID=<%TEMP%\\aws_account.txt
-                                del %TEMP%\\aws_account.txt
-                                
-                                REM Try to get bucket from existing application version first
-                                echo Checking for existing S3 bucket...
-                                powershell -Command "$bucket = aws elasticbeanstalk describe-application-versions --application-name ${EB_APPLICATION_NAME} --max-items 1 --region ${AWS_REGION} --query 'ApplicationVersions[0].SourceBundle.S3Bucket' --output text 2>$null; if ($bucket -and $bucket -ne 'None') { Write-Host $bucket.Trim() }" > %TEMP%\\eb_bucket.txt
-                                set /p EB_S3_BUCKET=<%TEMP%\\eb_bucket.txt
-                                del %TEMP%\\eb_bucket.txt
-                                
-                                REM If no existing bucket, construct bucket name from account ID
-                                if "%EB_S3_BUCKET%"=="" (
-                                    if not "%AWS_ACCOUNT_ID%"=="" (
-                                        set EB_S3_BUCKET=elasticbeanstalk-${AWS_REGION}-%AWS_ACCOUNT_ID%
-                                        echo Constructed bucket name from account ID
-                                    ) else (
-                                        echo ERROR: Could not get AWS account ID
-                                        echo Please ensure AWS credentials have proper permissions
-                                        exit /b 1
-                                    )
-                                ) else (
-                                    echo Found existing bucket from previous deployment
-                                )
-                                
-                                echo Using S3 bucket: %EB_S3_BUCKET%
-                                
-                                REM Set version label and ZIP name
-                                set VERSION_LABEL=app-${BUILD_NUMBER}
-                                set ZIP_NAME=lms-deployment-${BUILD_NUMBER}.zip
-                                
-                                REM Upload ZIP to S3
-                                echo Uploading deployment package to S3...
-                                echo Source: %ZIP_NAME%
-                                echo Destination: s3://%EB_S3_BUCKET%/%ZIP_NAME%
-                                aws s3 cp "%ZIP_NAME%" "s3://%EB_S3_BUCKET%/%ZIP_NAME%" --region ${AWS_REGION}
-                                if errorlevel 1 (
-                                    echo WARNING: Failed to upload to S3, bucket may not exist
-                                    echo Elastic Beanstalk will create bucket automatically when creating version
-                                    echo Proceeding to create application version...
-                                ) else (
-                                    echo Successfully uploaded to S3
-                                )
-                                
-                                REM Create application version (EB will create bucket if needed)
-                                echo Creating application version: %VERSION_LABEL%
-                                aws elasticbeanstalk create-application-version --application-name ${EB_APPLICATION_NAME} --version-label %VERSION_LABEL% --source-bundle S3Bucket=%EB_S3_BUCKET%,S3Key=%ZIP_NAME% --auto-create-application --region ${AWS_REGION}
-                                if errorlevel 1 (
-                                    echo ERROR: Failed to create application version
-                                    echo Check AWS permissions and credentials
-                                    exit /b 1
-                                )
-                                echo Application version created successfully
-                                
-                                REM Update environment
-                                echo Updating environment ${EB_ENVIRONMENT_NAME} to version %VERSION_LABEL%...
-                                aws elasticbeanstalk update-environment --application-name ${EB_APPLICATION_NAME} --environment-name ${EB_ENVIRONMENT_NAME} --version-label %VERSION_LABEL% --region ${AWS_REGION}
-                                if errorlevel 1 (
-                                    echo ERROR: Failed to update environment
-                                    echo Environment may already be updating or credentials may be invalid
-                                    exit /b 1
-                                )
-                                
-                                echo ========================================
-                                echo Deployment initiated successfully!
-                                echo Version: %VERSION_LABEL%
-                                echo S3 Bucket: %EB_S3_BUCKET%
-                                echo Check AWS Console for deployment status.
-                                echo ========================================
-                                exit /b 0
-                            )
-                            
-                            REM Python found - use EB CLI
-                            echo Found Python: %PYTHON_CMD%
-                            echo Installing EB CLI...
-                            "%PYTHON_CMD%" -m pip install awsebcli --user --quiet
-                            if errorlevel 1 (
-                                echo ERROR: Failed to install EB CLI
+                            if "!AWS_ACCOUNT_ID!"=="" (
+                                echo ERROR: Could not get AWS account ID
+                                echo Please ensure AWS credentials have proper permissions
                                 exit /b 1
                             )
                             
-                            REM Find EB CLI executable
-                            set EB_CMD=eb
-                            for /f "delims=" %%e in ('powershell -Command "Get-Command eb -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source"') do set EB_CMD=%%e
-                            if "%EB_CMD%"=="eb" (
-                                REM Try common locations
-                                if exist "%USERPROFILE%\\AppData\\Roaming\\Python\\Python*\\Scripts\\eb.exe" (
-                                    for /f "delims=" %%e in ('dir /b /s "%USERPROFILE%\\AppData\\Roaming\\Python\\Python*\\Scripts\\eb.exe" 2^>nul') do set EB_CMD=%%e
-                                )
-                                if "%EB_CMD%"=="eb" if exist "%USERPROFILE%\\AppData\\Local\\Programs\\Python\\Python*\\Scripts\\eb.exe" (
-                                    for /f "delims=" %%e in ('dir /b /s "%USERPROFILE%\\AppData\\Local\\Programs\\Python\\Python*\\Scripts\\eb.exe" 2^>nul') do set EB_CMD=%%e
-                                )
-                                REM If still not found, try python -m awsebcli
-                                if "%EB_CMD%"=="eb" set EB_CMD=%PYTHON_CMD% -m awsebcli
-                            )
+                            echo AWS Account ID: !AWS_ACCOUNT_ID!
                             
-                            echo Using EB CLI: %EB_CMD%
-                            "%EB_CMD%" --version
+                            REM Try to get bucket from existing version first
+                            echo Checking for existing S3 bucket...
+                            for /f "tokens=*" %%b in ('aws elasticbeanstalk describe-application-versions --application-name ${EB_APPLICATION_NAME} --max-items 1 --region ${AWS_REGION} --query "ApplicationVersions[0].SourceBundle.S3Bucket" --output text 2^>nul') do set EB_S3_BUCKET=%%b
                             
-                            REM Copy .elasticbeanstalk config to deploy directory
-                            echo Setting up EB configuration...
-                            if not exist deploy\\.elasticbeanstalk mkdir deploy\\.elasticbeanstalk
-                            if exist .elasticbeanstalk\\config.yml (
-                                copy /Y .elasticbeanstalk\\config.yml deploy\\.elasticbeanstalk\\config.yml
-                                echo EB config copied
+                            REM If no existing bucket, construct it
+                            if "!EB_S3_BUCKET!"=="" (
+                                set EB_S3_BUCKET=elasticbeanstalk-${AWS_REGION}-!AWS_ACCOUNT_ID!
+                                echo Constructed bucket: !EB_S3_BUCKET!
                             ) else (
-                                echo Warning: .elasticbeanstalk\\config.yml not found
+                                echo Found existing bucket: !EB_S3_BUCKET!
                             )
                             
-                            REM Deploy to Elastic Beanstalk using EB CLI
-                            echo Deploying to ${EB_ENVIRONMENT_NAME}...
-                            cd deploy
+                            set VERSION_LABEL=app-${BUILD_NUMBER}
                             
-                            REM Try to use the environment (optional)
-                            "%EB_CMD%" use ${EB_ENVIRONMENT_NAME} 2>&1 || echo Warning: Could not set EB environment, continuing...
-                            
-                            REM Deploy
-                            echo Running eb deploy...
-                            "%EB_CMD%" deploy ${EB_ENVIRONMENT_NAME} --staged 2>&1
+                            REM Upload to S3
+                            echo Uploading ${DEPLOY_ZIP} to S3...
+                            aws s3 cp "${DEPLOY_ZIP}" "s3://!EB_S3_BUCKET!/${DEPLOY_ZIP}" --region ${AWS_REGION}
                             if errorlevel 1 (
-                                echo Staged deploy failed, trying regular deploy...
-                                "%EB_CMD%" deploy ${EB_ENVIRONMENT_NAME} 2>&1
+                                echo WARNING: Upload failed, but continuing (EB may create bucket automatically)
                             )
-                            set DEPLOY_EXIT_CODE=%ERRORLEVEL%
                             
-                            if %DEPLOY_EXIT_CODE% neq 0 (
-                                echo ERROR: Deployment failed with exit code %DEPLOY_EXIT_CODE%
-                                cd ..
-                                exit /b %DEPLOY_EXIT_CODE%
+                            REM Create application version
+                            echo Creating application version: !VERSION_LABEL!
+                            aws elasticbeanstalk create-application-version --application-name ${EB_APPLICATION_NAME} --version-label !VERSION_LABEL! --source-bundle S3Bucket=!EB_S3_BUCKET!,S3Key=${DEPLOY_ZIP} --region ${AWS_REGION}
+                            if errorlevel 1 (
+                                echo ERROR: Failed to create application version
+                                exit /b 1
+                            )
+                            
+                            REM Update environment
+                            echo Updating environment ${EB_ENVIRONMENT_NAME}...
+                            aws elasticbeanstalk update-environment --application-name ${EB_APPLICATION_NAME} --environment-name ${EB_ENVIRONMENT_NAME} --version-label !VERSION_LABEL! --region ${AWS_REGION}
+                            if errorlevel 1 (
+                                echo ERROR: Failed to update environment
+                                exit /b 1
                             )
                             
                             echo ========================================
-                            echo Deployment completed successfully!
+                            echo Deployment initiated successfully!
+                            echo Version: !VERSION_LABEL!
+                            echo S3 Bucket: !EB_S3_BUCKET!
                             echo ========================================
-                            cd ..
+                            endlocal
                         """
                     }
                 }
             }
             post {
                 success {
-                    script {
-                        // Check if deployment was actually attempted or skipped
-                        def log = currentBuild.rawBuild.getLog(100)
-                        def skipped = log.any { it.contains('Skipping deployment') || it.contains('Python not found') }
-                        if (!skipped) {
-                            echo 'Deployment to Elastic Beanstalk succeeded!'
-                        } else {
-                            echo 'WARNING: Deployment was skipped - Python not found. Install Python on Jenkins server or use AWS CLI method.'
-                        }
-                    }
+                    echo '✅ Deployment to Elastic Beanstalk succeeded!'
                 }
                 failure {
-                    echo 'Deployment to Elastic Beanstalk failed! Check logs above.'
+                    echo '❌ Deployment to Elastic Beanstalk failed! Check logs above.'
                 }
             }
         }
