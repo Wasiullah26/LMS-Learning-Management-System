@@ -29,15 +29,27 @@ pipeline {
         stage('Backend Analysis') {
             steps {
                 dir('backend') {
-                    bat '''
-                        @echo off
-                        where python >nul 2>&1 && python -m venv venv || where py >nul 2>&1 && py -m venv venv || C:\\Python310\\python.exe -m venv venv || C:\\Users\\%USERNAME%\\anaconda3\\python.exe -m venv venv || exit /b 0
-                        call venv\\Scripts\\activate.bat || exit /b 0
-                        python -m pip install --upgrade pip || exit /b 0
-                        python -m pip install -r requirements.txt || exit /b 0
-                        python -m pip install -r requirements-dev.txt || exit /b 0
-                        call run_analysis.bat || exit /b 0
-                    '''
+                    script {
+                        // Try to find Python using PowerShell
+                        def pythonExe = bat(
+                            script: '@echo off & powershell -Command "$p = Get-Command python -ErrorAction SilentlyContinue; if ($p) { Write-Host $p.Source } else { $p = Get-Command py -ErrorAction SilentlyContinue; if ($p) { Write-Host $p.Source } else { Write-Host \"NOT_FOUND\" } }"',
+                            returnStdout: true
+                        ).trim()
+                        
+                        if (pythonExe == "NOT_FOUND" || pythonExe.isEmpty()) {
+                            echo "Python not found - skipping backend analysis. This is optional."
+                        } else {
+                            bat """
+                                @echo off
+                                "${pythonExe}" -m venv venv || exit /b 0
+                                call venv\\Scripts\\activate.bat || exit /b 0
+                                python -m pip install --upgrade pip || exit /b 0
+                                python -m pip install -r requirements.txt || exit /b 0
+                                python -m pip install -r requirements-dev.txt || exit /b 0
+                                call run_analysis.bat || exit /b 0
+                            """
+                        }
+                    }
                 }
             }
             post {
