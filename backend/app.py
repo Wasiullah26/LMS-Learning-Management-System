@@ -14,7 +14,9 @@ from routes.admin import admin_bp
 
 
 def create_app(config_name=None):
-    app = Flask(__name__)
+    # Set static folder for React app (one level up from backend)
+    static_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static')
+    app = Flask(__name__, static_folder=static_dir, static_url_path='')
 
     config_name = config_name or os.getenv("FLASK_ENV", "development")
     app.config.from_object(config[config_name])
@@ -44,28 +46,6 @@ def create_app(config_name=None):
     def health_check():
         return jsonify({"status": "healthy", "message": "LMS API is running"}), 200
 
-    @app.route("/", methods=["GET"])
-    def root():
-        return (
-            jsonify(
-                {
-                    "message": "LMS API",
-                    "version": "1.0.0",
-                    "endpoints": {
-                        "health": "/api/health",
-                        "auth": "/api/auth",
-                        "users": "/api/users",
-                        "courses": "/api/courses",
-                        "modules": "/api/modules",
-                        "enrollments": "/api/enrollments",
-                        "progress": "/api/progress",
-                        "upload": "/api/upload",
-                    },
-                }
-            ),
-            200,
-        )
-
     @app.errorhandler(404)
     def not_found(_error):
         return jsonify({"error": "Endpoint not found"}), 404
@@ -73,6 +53,22 @@ def create_app(config_name=None):
     @app.errorhandler(500)
     def internal_error(_error):
         return jsonify({"error": "Internal server error"}), 500
+
+    # Serve React app for all non-API routes
+    @app.route('/', defaults={'path': ''})
+    @app.route('/<path:path>')
+    def serve_react(path):
+        if path.startswith('api/'):
+            return jsonify({"error": "Endpoint not found"}), 404
+        
+        from flask import send_from_directory
+        
+        static_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static')
+        if path and os.path.exists(os.path.join(static_dir, path)):
+            return send_from_directory(static_dir, path)
+        else:
+            # Serve index.html for React Router
+            return send_from_directory(static_dir, 'index.html')
 
     return app
 

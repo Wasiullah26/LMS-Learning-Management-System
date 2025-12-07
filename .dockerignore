@@ -1,0 +1,52 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+.venv/
+env/
+.env
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Reports
+reports/
+*.txt
+*.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Jenkins
+.jenkins/
+
+# AWS
+.elasticbeanstalk/
+.ebextensions/
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
