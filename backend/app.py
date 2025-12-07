@@ -46,34 +46,29 @@ def create_app(config_name=None):
     def health_check():
         return jsonify({"status": "healthy", "message": "LMS API is running"}), 200
 
-    @app.errorhandler(404)
-    def not_found(_error):
-        return jsonify({"error": "Endpoint not found"}), 404
-
     @app.errorhandler(500)
     def internal_error(_error):
         return jsonify({"error": "Internal server error"}), 500
 
-    # Serve React app for all non-API routes (MUST be registered last)
-    # This catch-all route handles React Router client-side routing
-    @app.route('/', defaults={'path': ''})
-    @app.route('/<path:path>')
-    def serve_react(path):
-        # Double-check: if somehow an API route reaches here, return 404
-        if path.startswith('api/'):
+    # Custom 404 handler: serve index.html for non-API routes (React Router)
+    @app.errorhandler(404)
+    def not_found(error):
+        from flask import request, send_from_directory
+        
+        # If it's an API route, return JSON error
+        if request.path.startswith('/api/'):
             return jsonify({"error": "Endpoint not found"}), 404
         
-        from flask import send_from_directory
-        
+        # For all other routes, serve index.html (React Router will handle routing)
         static_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static')
-        
-        # If path exists as a static file (CSS, JS, images), serve it
-        if path and os.path.exists(os.path.join(static_dir, path)):
-            return send_from_directory(static_dir, path)
-        else:
-            # For all other routes (React Router routes), serve index.html
-            # This allows React Router to handle client-side routing
-            return send_from_directory(static_dir, 'index.html')
+        return send_from_directory(static_dir, 'index.html')
+
+    # Serve React app root route
+    @app.route('/')
+    def serve_index():
+        from flask import send_from_directory
+        static_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static')
+        return send_from_directory(static_dir, 'index.html')
 
     return app
 
