@@ -5,7 +5,9 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { authService } from '../utils/auth';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// Use relative path since Flask serves both frontend and API
+// This works for both development (with proxy) and production (same origin)
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 const baseQuery = fetchBaseQuery({
   baseUrl: API_BASE_URL,

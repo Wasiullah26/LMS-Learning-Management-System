@@ -13,6 +13,6 @@ services:
       - AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}
       - SECRET_KEY=${SECRET_KEY}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY}
-      - CORS_ORIGINS=http://localhost:5000
+      - CORS_ORIGINS=http://localhost:5000,http://3.238.125.103:5000
     restart: unless-stopped
 

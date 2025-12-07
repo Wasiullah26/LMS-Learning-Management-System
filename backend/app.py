@@ -54,20 +54,25 @@ def create_app(config_name=None):
     def internal_error(_error):
         return jsonify({"error": "Internal server error"}), 500
 
-    # Serve React app for all non-API routes
+    # Serve React app for all non-API routes (MUST be registered last)
+    # This catch-all route handles React Router client-side routing
     @app.route('/', defaults={'path': ''})
     @app.route('/<path:path>')
     def serve_react(path):
+        # Double-check: if somehow an API route reaches here, return 404
         if path.startswith('api/'):
             return jsonify({"error": "Endpoint not found"}), 404
         
         from flask import send_from_directory
         
         static_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static')
+        
+        # If path exists as a static file (CSS, JS, images), serve it
         if path and os.path.exists(os.path.join(static_dir, path)):
             return send_from_directory(static_dir, path)
         else:
-            # Serve index.html for React Router
+            # For all other routes (React Router routes), serve index.html
+            # This allows React Router to handle client-side routing
             return send_from_directory(static_dir, 'index.html')
 
     return app

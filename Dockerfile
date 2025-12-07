@@ -14,7 +14,11 @@ RUN npm ci
 # Copy frontend source
 COPY frontend/ .
 
-# Build React app
+# Build React app with API URL (defaults to relative path for same origin)
+# If you want to use a different API URL, set VITE_API_URL during build
+ARG VITE_API_URL=/api
+ENV VITE_API_URL=${VITE_API_URL}
+
 RUN npm run build
 
 # Stage 2: Backend with Frontend
