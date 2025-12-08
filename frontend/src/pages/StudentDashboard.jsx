@@ -5,7 +5,7 @@ import { authService } from '../utils/auth';
 
 const StudentDashboard = () => {
   const user = authService.getUser();
-  // Force refetch on mount and include user ID to make cache user-specific
+
   const { data: enrollmentsData, isLoading, error } = useGetEnrollmentsQuery(
     { userId: user?.userId },
     { refetchOnMountOrArgChange: true }
@@ -42,7 +42,7 @@ const StudentDashboard = () => {
 
   return (
     <div className="dashboard-container">
-      {/* Welcome Header */}
+      {}
       <div className="dashboard-header">
         <div className="dashboard-header-content">
           <div>
@@ -59,7 +59,7 @@ const StudentDashboard = () => {
         </div>
       </div>
 
-      {/* My Enrollments Section */}
+      {}
       <div className="dashboard-section">
         <div className="dashboard-section-header">
           <h2>My Enrollments</h2>
@@ -101,19 +101,19 @@ const StudentDashboard = () => {
 
 const EnrollmentCard = ({ enrollment }) => {
   const user = authService.getUser();
-  // Force refetch on mount to ensure fresh data
+
   const { data: courseData, isLoading: courseLoading } = useGetCourseQuery(
     enrollment.courseId,
     { refetchOnMountOrArgChange: true }
   );
-  // Include user ID and force refetch to make progress user-specific
+
   const { data: progressData } = useGetProgressQuery(
     { courseId: enrollment.courseId, userId: user?.userId },
     { refetchOnMountOrArgChange: true }
   );
-  
+
   const course = courseData?.course;
-  
+
   const progress = useMemo(() => {
     if (!course?.modules) return { percentage: 0 };
     const progressList = progressData?.progress || [];
@@ -144,7 +144,7 @@ const EnrollmentCard = ({ enrollment }) => {
           {course ? course.title : `Course ID: ${enrollment.courseId}`}
         </h3>
       </div>
-      
+
       {course && (
         <p className="enrollment-card-description">
           {course.description}
@@ -168,8 +168,8 @@ const EnrollmentCard = ({ enrollment }) => {
             </svg>
             <span>Progress: {progress.percentage}%</span>
             <div className="progress-bar">
-              <div 
-                className="progress-bar-fill" 
+              <div
+                className="progress-bar-fill"
                 style={{ width: `${progress.percentage}%` }}
               ></div>
             </div>

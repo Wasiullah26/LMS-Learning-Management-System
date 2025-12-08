@@ -28,7 +28,7 @@ const Login = () => {
       [name]: value
     });
 
-    // Real-time validation after first blur
+
     if (touched[name]) {
       if (name === 'email') {
         const emailValidation = validateEmail(value);
@@ -63,10 +63,10 @@ const Login = () => {
     e.preventDefault();
     setError('');
 
-    // Validate all fields
+
     const emailValidation = validateEmail(formData.email);
-    const passwordError = !formData.password || formData.password.trim() === '' 
-      ? 'Password is required' 
+    const passwordError = !formData.password || formData.password.trim() === ''
+      ? 'Password is required'
       : '';
 
     setErrors({

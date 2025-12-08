@@ -6,7 +6,6 @@ from config import Config
 
 
 def generate_token(user_id, role):
-    # creates jwt token for user
     payload = {
         "user_id": user_id,
         "role": role,
@@ -19,7 +18,6 @@ def generate_token(user_id, role):
 
 
 def verify_token(token):
-    # check if token is valid and not expired
     try:
         payload = jwt.decode(token, Config.JWT_SECRET_KEY, algorithms=[Config.JWT_ALGORITHM])
         return payload
@@ -30,11 +28,9 @@ def verify_token(token):
 
 
 def get_token_from_request():
-    # get token from authorization header
     auth_header = request.headers.get("Authorization")
     if auth_header:
         try:
-            # format is "Bearer <token>"
             token = auth_header.split(" ")[1]
             return token
         except IndexError:
@@ -43,7 +39,6 @@ def get_token_from_request():
 
 
 def token_required(f):
-    # decorator to protect routes that need login
     @wraps(f)
     def decorated(*args, **kwargs):
         token = get_token_from_request()
@@ -55,7 +50,6 @@ def token_required(f):
         if not payload:
             return jsonify({"error": "Token is invalid or expired"}), 401
 
-        # add user info to request so we can use it in the route
         request.current_user = {"user_id": payload["user_id"], "role": payload["role"]}
 
         return f(*args, **kwargs)
@@ -64,7 +58,6 @@ def token_required(f):
 
 
 def instructor_required(f):
-    # decorator to make sure only instructors can access
     @wraps(f)
     @token_required
     def decorated(*args, **kwargs):
@@ -76,7 +69,6 @@ def instructor_required(f):
 
 
 def student_required(f):
-    # decorator to make sure only students can access
     @wraps(f)
     @token_required
     def decorated(*args, **kwargs):
@@ -88,7 +80,6 @@ def student_required(f):
 
 
 def admin_required(f):
-    # decorator to make sure only admin can access
     @wraps(f)
     @token_required
     def decorated(*args, **kwargs):

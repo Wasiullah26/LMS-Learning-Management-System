@@ -1,18 +1,18 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  useGetSpecializationsQuery, 
-  useGetCoursesBySpecializationQuery, 
-  useAddInstructorMutation 
+import {
+  useGetSpecializationsQuery,
+  useGetCoursesBySpecializationQuery,
+  useAddInstructorMutation
 } from '../services/apiSlice';
 import { toast } from '../utils/toast';
-import { 
-  validateName, 
-  validateEmail, 
-  validatePassword, 
+import {
+  validateName,
+  validateEmail,
+  validatePassword,
   validateSelect,
   validateCheckboxGroup,
-  getPasswordStrength 
+  getPasswordStrength
 } from '../utils/validation';
 
 const AdminAddInstructor = () => {
@@ -65,7 +65,6 @@ const AdminAddInstructor = () => {
       [name]: value
     });
 
-    // Real-time validation after first blur
     if (touched[name]) {
       validateField(name, value);
     }
@@ -73,7 +72,7 @@ const AdminAddInstructor = () => {
 
   const validateField = (name, value) => {
     let validation;
-    
+
     switch (name) {
       case 'name':
         validation = validateName(value, { fieldName: 'Name' });
@@ -115,7 +114,6 @@ const AdminAddInstructor = () => {
 
     setFormData(prev => ({ ...prev, courseIds: newCourseIds }));
 
-    // Validate courses if touched
     if (touched.courseIds) {
       const validation = validateCheckboxGroup(newCourseIds, 'course');
       setErrors(prev => ({ ...prev, courseIds: validation.error }));
@@ -125,7 +123,6 @@ const AdminAddInstructor = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Mark all fields as touched
     const allTouched = {
       name: true,
       email: true,
@@ -135,7 +132,6 @@ const AdminAddInstructor = () => {
     };
     setTouched(allTouched);
 
-    // Validate all fields
     const nameValidation = validateName(formData.name, { fieldName: 'Name' });
     const emailValidation = validateEmail(formData.email);
     const passwordValidation = validatePassword(formData.password);
@@ -152,8 +148,8 @@ const AdminAddInstructor = () => {
 
     setErrors(newErrors);
 
-    if (!nameValidation.isValid || !emailValidation.isValid || 
-        !passwordValidation.isValid || !specializationValidation.isValid || 
+    if (!nameValidation.isValid || !emailValidation.isValid ||
+        !passwordValidation.isValid || !specializationValidation.isValid ||
         !coursesValidation.isValid) {
       return;
     }
@@ -244,7 +240,7 @@ const AdminAddInstructor = () => {
             {formData.password && (
               <div className="password-strength" style={{ marginTop: '0.5rem' }}>
                 <div className="password-strength-bar">
-                  <div 
+                  <div
                     className="password-strength-fill"
                     style={{
                       width: `${(passwordStrength.strength / 6) * 100}%`,
@@ -294,11 +290,11 @@ const AdminAddInstructor = () => {
                 <p>Loading courses...</p>
               ) : courses.length > 0 ? (
                 <>
-                  <div 
+                  <div
                     className={touched.courseIds && errors.courseIds ? 'checkbox-group-error' : ''}
-                    style={{ 
-                      border: '1px solid #ddd', 
-                      borderRadius: '4px', 
+                    style={{
+                      border: '1px solid #ddd',
+                      borderRadius: '4px',
                       padding: '1rem',
                       maxHeight: '300px',
                       overflowY: 'auto',

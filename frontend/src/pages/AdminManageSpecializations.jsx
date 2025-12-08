@@ -13,10 +13,10 @@ import {
 } from '../services/apiSlice';
 import { toast } from '../utils/toast';
 import ConfirmModal from '../components/ConfirmModal';
-import { 
-  validateTitle, 
-  validateDescription, 
-  validateSpecializationCode 
+import {
+  validateTitle,
+  validateDescription,
+  validateSpecializationCode
 } from '../utils/validation';
 
 const AdminManageSpecializations = () => {
@@ -63,7 +63,7 @@ const AdminManageSpecializations = () => {
     { skip: !editingId }
   );
   const { data: instructorsData, isLoading: loadingInstructors } = useGetUsersQuery({ role: 'instructor' });
-  
+
   const [createSpecialization] = useCreateSpecializationMutation();
   const [updateSpecialization] = useUpdateSpecializationMutation();
   const [deleteSpecialization] = useDeleteSpecializationMutation();
@@ -72,12 +72,12 @@ const AdminManageSpecializations = () => {
   const [deleteCourse] = useAdminDeleteCourseMutation();
 
   const specializations = specializationsData?.specializations || [];
-  
-  // Memoize instructors and courses data to prevent unnecessary re-renders
+
+
   const instructors = useMemo(() => instructorsData?.users || [], [instructorsData?.users]);
   const coursesDataRaw = useMemo(() => coursesData?.courses || [], [coursesData?.courses]);
-  
-  // Enrich courses with instructor names
+
+
   const courses = useMemo(() => {
     return coursesDataRaw.map((course) => {
       if (course.instructorId && instructors.length > 0) {
@@ -94,7 +94,6 @@ const AdminManageSpecializations = () => {
 
   useEffect(() => {
     if (editingId && showAddForm) {
-      // Scroll to form when editing
       setTimeout(() => {
         if (formRef.current) {
           formRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -110,7 +109,6 @@ const AdminManageSpecializations = () => {
       [name]: value
     });
 
-    // Real-time validation after first blur
     if (formTouched[name]) {
       validateFormField(name, value);
     }
@@ -118,7 +116,7 @@ const AdminManageSpecializations = () => {
 
   const validateFormField = (name, value) => {
     let validation;
-    
+
     switch (name) {
       case 'name':
         validation = validateTitle(value, { fieldName: 'Specialization name', minLength: 3, maxLength: 100 });
@@ -159,7 +157,6 @@ const AdminManageSpecializations = () => {
       [name]: value
     });
 
-    // Real-time validation after first blur
     if (courseFormTouched[name]) {
       validateCourseFormField(name, value);
     }
@@ -167,7 +164,7 @@ const AdminManageSpecializations = () => {
 
   const validateCourseFormField = (name, value) => {
     let validation;
-    
+
     switch (name) {
       case 'title':
         validation = validateTitle(value, { fieldName: 'Course title' });
@@ -197,7 +194,6 @@ const AdminManageSpecializations = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Mark all fields as touched
     const allTouched = {
       name: true,
       code: true,
@@ -205,7 +201,6 @@ const AdminManageSpecializations = () => {
     };
     setFormTouched(allTouched);
 
-    // Validate all fields
     const nameValidation = validateTitle(formData.name, { fieldName: 'Specialization name', minLength: 3, maxLength: 100 });
     const codeValidation = validateSpecializationCode(formData.code);
     const descriptionValidation = validateDescription(formData.description, { fieldName: 'Description', minLength: 10, maxLength: 500 });
@@ -250,14 +245,12 @@ const AdminManageSpecializations = () => {
       return;
     }
 
-    // Mark all course fields as touched
     const allTouched = {
       title: true,
       description: true
     };
     setCourseFormTouched(allTouched);
 
-    // Validate all course fields
     const titleValidation = validateTitle(courseFormData.title, { fieldName: 'Course title' });
     const descriptionValidation = validateDescription(courseFormData.description, { fieldName: 'Description' });
 
@@ -651,8 +644,8 @@ const AdminManageSpecializations = () => {
                               </select>
                               <button
                                 className="btn btn-danger"
-                                style={{ 
-                                  padding: '0.5rem 1rem', 
+                                style={{
+                                  padding: '0.5rem 1rem',
                                   fontSize: '0.875rem',
                                   display: 'flex',
                                   alignItems: 'center',

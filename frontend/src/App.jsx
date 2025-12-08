@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'r
 import { authService } from './utils/auth';
 import { toast } from './utils/toast';
 
-// Pages
+
 import Login from './pages/Login';
 import Register from './pages/Register';
 import StudentDashboard from './pages/StudentDashboard';
@@ -19,11 +19,11 @@ import AdminManageSpecializations from './pages/AdminManageSpecializations';
 import AdminManageUsers from './pages/AdminManageUsers';
 import ChangePassword from './pages/ChangePassword';
 
-// Components
+
 import Navbar from './components/Navbar';
 import ToastContainer from './components/ToastContainer';
 
-// Protected Route Component
+
 const ProtectedRoute = ({ children, requireInstructor = false, requireAdmin = false }) => {
   if (!authService.isAuthenticated()) {
     return <Navigate to="/login" replace />;
@@ -62,11 +62,11 @@ function AppContent() {
       <ToastContainer toasts={toasts} removeToast={removeToast} />
         <main className={location.pathname === '/login' || location.pathname === '/register' ? '' : 'main-content'}>
           <Routes>
-            {/* Public routes */}
+            {}
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
 
-            {/* Protected routes */}
+            {}
             <Route
               path="/dashboard"
               element={
@@ -178,7 +178,6 @@ function AppContent() {
               }
             />
 
-            {/* Default route */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </main>

@@ -8,21 +8,21 @@ const CourseViewer = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const user = authService.getUser();
-  // Force refetch on mount to ensure fresh data
+
   const { data: courseData, isLoading, error } = useGetCourseQuery(
     id,
     { refetchOnMountOrArgChange: true }
   );
-  // Include user ID and force refetch to make progress user-specific
+
   const { data: progressData } = useGetProgressQuery(
     { courseId: id, userId: user?.userId },
-    { 
+    {
       skip: !authService.isStudent(),
       refetchOnMountOrArgChange: true
     }
   );
   const [markComplete] = useMarkProgressCompleteMutation();
-  
+
   const course = courseData?.course;
   const [currentModule, setCurrentModule] = useState(null);
 
@@ -101,7 +101,7 @@ const CourseViewer = () => {
 
   return (
     <div className="dashboard-container">
-      {/* Header */}
+      {}
       <div className="page-header">
         <button onClick={() => navigate(-1)} className="back-button">
           ←
@@ -113,7 +113,7 @@ const CourseViewer = () => {
       </div>
 
       <div className="course-viewer-layout">
-        {/* Modules Sidebar */}
+        {}
         <div className="course-viewer-sidebar">
           <div className="card-modern">
             <div className="card-modern-header">
@@ -153,7 +153,7 @@ const CourseViewer = () => {
           </div>
         </div>
 
-        {/* Content Area */}
+        {}
         <div className="course-viewer-content">
           {currentModule ? (
             <div className="card-modern">

@@ -8,15 +8,15 @@ const CourseDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const user = authService.getUser();
-  // Force refetch on mount to ensure fresh data
+
   const { data: courseData, isLoading, error } = useGetCourseQuery(
     id,
     { refetchOnMountOrArgChange: true }
   );
-  // Include user ID and force refetch to make enrollments user-specific
+
   const { data: enrollmentsData } = useGetEnrollmentsQuery(
     { userId: user?.userId },
-    { 
+    {
       skip: !authService.isStudent(),
       refetchOnMountOrArgChange: true
     }
@@ -92,7 +92,7 @@ const CourseDetail = () => {
 
   return (
     <div className="course-detail-wrapper">
-      {/* Hero Section */}
+      {}
       <div className="course-detail-hero">
         <button onClick={() => navigate(-1)} className="course-detail-back-btn">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -118,12 +118,12 @@ const CourseDetail = () => {
         </div>
       </div>
 
-      {/* Main Content */}
+      {}
       <div className="course-detail-container">
         <div className="course-detail-layout">
-          {/* Main Content Area */}
+          {}
           <div className="course-detail-content">
-            {/* Description Card */}
+            {}
             <div className="course-detail-card">
               <div className="course-detail-card-header">
                 <div className="course-detail-card-icon">
@@ -143,7 +143,7 @@ const CourseDetail = () => {
               </div>
             </div>
 
-            {/* Modules Card */}
+            {}
             <div className="course-detail-card" style={{ marginTop: '2rem' }}>
               <div className="course-detail-card-header">
                 <div className="course-detail-card-icon">
@@ -187,7 +187,7 @@ const CourseDetail = () => {
             </div>
           </div>
 
-          {/* Sidebar */}
+          {}
           {authService.isStudent() && (
             <div className="course-detail-sidebar">
               <div className="course-detail-enrollment-card">
@@ -217,8 +217,8 @@ const CourseDetail = () => {
                       <h3>Enroll Now</h3>
                       <p>Get access to all course materials and start learning today.</p>
                     </div>
-                    <button 
-                      onClick={handleEnroll} 
+                    <button
+                      onClick={handleEnroll}
                       className="course-detail-enroll-btn primary"
                       disabled={enrolling}
                     >

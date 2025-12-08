@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-# run this file to seed the database with initial data
-# python seed_database.py
 
 from setup.database_seeder import seed_database
 

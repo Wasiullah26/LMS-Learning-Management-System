@@ -5,9 +5,9 @@ import { authService } from '../utils/auth';
 
 const CourseList = () => {
   const user = authService.getUser();
-  // For instructors, filter by their instructorId
+
   const params = user?.role === 'instructor' ? { instructorId: user.userId } : {};
-  // Force refetch on mount to ensure fresh data
+
   const { data, isLoading, error } = useGetCoursesQuery(
     params,
     { refetchOnMountOrArgChange: true }
@@ -44,7 +44,7 @@ const CourseList = () => {
 
   return (
     <div className="dashboard-container">
-      {/* Header */}
+      {}
       <div className="dashboard-header" style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
         <div className="dashboard-header-content">
           <div>
@@ -61,7 +61,7 @@ const CourseList = () => {
         </div>
       </div>
 
-      {/* Courses Section */}
+      {}
       <div className="dashboard-section">
         {courses.length === 0 ? (
           <div className="empty-state">

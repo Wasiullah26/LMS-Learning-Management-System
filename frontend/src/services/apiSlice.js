@@ -1,12 +1,12 @@
-/**
- * RTK Query API slice for all API endpoints
- */
+
+
+
 
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { authService } from '../utils/auth';
 
-// Use relative path since Flask serves both frontend and API
-// This works for both development (with proxy) and production (same origin)
+
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 const baseQuery = fetchBaseQuery({
@@ -24,10 +24,10 @@ const baseQuery = fetchBaseQuery({
 const baseQueryWithReauth = async (args, api, extraOptions) => {
   let result = await baseQuery(args, api, extraOptions);
   if (result.error && result.error.status === 401) {
-    // Don't redirect if this is a login request - let the login component handle the error
+
     const url = typeof args === 'string' ? args : args.url || '';
     const isLoginRequest = url.includes('/auth/login');
-    
+
     if (!isLoginRequest) {
       authService.clearAuth();
       window.location.href = '/login';
@@ -41,7 +41,7 @@ export const apiSlice = createApi({
   baseQuery: baseQueryWithReauth,
   tagTypes: ['User', 'Course', 'Module', 'Enrollment', 'Progress', 'Specialization', 'Admin'],
   endpoints: (builder) => ({
-    // Auth endpoints
+
     login: builder.mutation({
       query: (credentials) => ({
         url: '/auth/login',
@@ -64,26 +64,26 @@ export const apiSlice = createApi({
       }),
     }),
 
-    // Courses endpoints
+
     getCourses: builder.query({
       query: (params = {}) => ({
         url: '/courses',
         params,
       }),
       providesTags: (result, _error, arg) => {
-        // Make cache key user-specific by including user ID or instructor ID in tags
+
         const userId = authService.getUser()?.userId;
         const instructorId = arg?.instructorId;
         const cacheKey = instructorId ? `instructor-${instructorId}` : userId ? `user-${userId}` : 'all';
         return [
           { type: 'Course', id: cacheKey },
-          ...(result?.courses || []).map(c => ({ 
-            type: 'Course', 
-            id: `${cacheKey}-${c.courseId}` 
+          ...(result?.courses || []).map(c => ({
+            type: 'Course',
+            id: `${cacheKey}-${c.courseId}`
           }))
         ];
       },
-      // Don't keep unused data to prevent cross-user cache issues
+
       keepUnusedDataFor: 0,
     }),
     getCourse: builder.query({
@@ -121,7 +121,7 @@ export const apiSlice = createApi({
       invalidatesTags: ['Course', 'Specialization'],
     }),
 
-    // Modules endpoints
+
     getModules: builder.query({
       query: (courseId) => `/modules/courses/${courseId}/modules`,
       providesTags: (result, error, courseId) => [{ type: 'Module', id: courseId }],
@@ -158,7 +158,7 @@ export const apiSlice = createApi({
       invalidatesTags: (result, error, { courseId }) => [{ type: 'Module', id: courseId }],
     }),
 
-    // Enrollments endpoints
+
     createEnrollment: builder.mutation({
       query: (data) => ({
         url: '/enrollments',
@@ -173,17 +173,17 @@ export const apiSlice = createApi({
         params,
       }),
       providesTags: (result) => {
-        // Make cache key user-specific by including user ID in tags
+
         const userId = authService.getUser()?.userId;
         return [
           { type: 'Enrollment', id: 'LIST' },
-          ...(result?.enrollments || []).map(e => ({ 
-            type: 'Enrollment', 
-            id: `${userId}-${e.enrollmentId}` 
+          ...(result?.enrollments || []).map(e => ({
+            type: 'Enrollment',
+            id: `${userId}-${e.enrollmentId}`
           }))
         ];
       },
-      // Don't keep unused data to prevent cross-user cache issues
+
       keepUnusedDataFor: 0,
     }),
     deleteEnrollment: builder.mutation({
@@ -194,7 +194,7 @@ export const apiSlice = createApi({
       invalidatesTags: ['Enrollment'],
     }),
 
-    // Progress endpoints
+
     createProgress: builder.mutation({
       query: (data) => ({
         url: '/progress',
@@ -209,18 +209,18 @@ export const apiSlice = createApi({
         params,
       }),
       providesTags: (result, _error, arg) => {
-        // Make cache key user-specific by including user ID in tags
+
         const userId = authService.getUser()?.userId;
         const courseId = arg?.courseId || 'ALL';
         return [
           { type: 'Progress', id: `${userId}-${courseId}` },
-          ...(result?.progress || []).map(p => ({ 
-            type: 'Progress', 
-            id: `${userId}-${p.progressId}` 
+          ...(result?.progress || []).map(p => ({
+            type: 'Progress',
+            id: `${userId}-${p.progressId}`
           }))
         ];
       },
-      // Don't keep unused data to prevent cross-user cache issues
+
       keepUnusedDataFor: 0,
     }),
     markProgressComplete: builder.mutation({
@@ -239,7 +239,7 @@ export const apiSlice = createApi({
       providesTags: ['Progress'],
     }),
 
-    // Upload endpoint
+
     uploadFile: builder.mutation({
       query: ({ file, folderPath = '' }) => {
         const formData = new FormData();
@@ -255,7 +255,7 @@ export const apiSlice = createApi({
       },
     }),
 
-    // Admin endpoints
+
     addStudent: builder.mutation({
       query: (data) => ({
         url: '/admin/students',
