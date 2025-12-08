@@ -1,82 +1,126 @@
 pipeline {
     agent any
-    
-    triggers {
-        pollSCM('H/5 * * * *')  // Check every 5 minutes
-    }
-    
+
     environment {
-        SONAR_ORGANIZATION = 'wasiullah26'
-        SONAR_PROJECT_KEY = 'Wasiullah26_LMS-Learning-Management-System'
-        SONAR_TOKEN = credentials('sonarcloud-token')
+        IMAGE_NAME = "lms-app"
+        CONTAINER_NAME = "lms-container"
+        APP_PORT = "5000"
+        AWS_REGION = 'us-east-1'  // adjust if needed
+        SONAR_TOKEN = credentials('sonarqube-credentials')
     }
-    
     stages {
-        stage('Checkout') {
+        stage('Checkout Code') {
             steps {
-                checkout scm
+                checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[credentialsId: 'github-credentials', url: 'https://github.com/Wasiullah26/LMS-Learning-Management-System.git']])
             }
         }
         
-        stage('Backend: Dependency Check') {
+        stage('Python Lint & Security Checks') {
+    steps {
+        echo "Running Pylint, Flake8, Bandit, Safety..."
+        sh '''
+            # Ensure Python 3 and pip are available
+            python3 --version || exit 1
+            python3 -m pip --version || exit 1
+
+            # Create and activate virtual environment
+            python3 -m venv venv
+            . venv/bin/activate
+
+            # Upgrade pip and install tools
+            python3 -m pip install --upgrade pip
+            python3 -m pip install pylint flake8 bandit safety
+
+            # Run Pylint
+            pylint backend/**/*.py || true
+
+            # Run Flake8
+            flake8 backend || true
+
+            # Run Bandit (security checks)
+            bandit -r backend -ll -iii || true
+
+            # Run Safety (vulnerability scan)
+            safety check || true
+        '''
+    }
+}
+stage('SonarQube Analysis') {
+    steps {
+        withSonarQubeEnv('SonarQube') {
+            script {
+                def scannerHome = tool 'sonar-scanner'
+            }
+            sh """
+                ${tool('sonar-scanner')}/bin/sonar-scanner \
+                  -Dsonar.projectKey=lms-project \
+                  -Dsonar.sources=backend \
+                  -Dsonar.exclusions=backend/venv/**,backend/__pycache__/**,backend/**/*.pyc,backend/reports/**,backend/.venv/**,frontend/node_modules/**,frontend/dist/**,frontend/build/**,frontend/reports/** \
+                  -Dsonar.python.version=3 \
+                  -Dsonar.host.url=http://34.232.240.118:9000 \
+                  -Dsonar.login=${SONAR_TOKEN}
+            """
+        }
+    }
+}
+        stage('Build Docker Image') {
             steps {
-                dir('backend') {
-                    script {
-                        def pythonExe = bat(
-                            script: '@echo off & powershell -Command "$p = Get-Command python -ErrorAction SilentlyContinue; if ($p) { Write-Host $p.Source } else { $p = Get-Command py -ErrorAction SilentlyContinue; if ($p) { Write-Host $p.Source } else { Write-Host \"NOT_FOUND\" } }"',
-                            returnStdout: true
-                        ).trim()
-                        
-                        if (pythonExe != "NOT_FOUND" && !pythonExe.isEmpty()) {
-                            bat """
-                                "${pythonExe}" -m pip install safety || exit /b 0
-                                "${pythonExe}" -m safety check || exit /b 0
-                            """
-                        } else {
-                            echo "Python not found - skipping dependency check"
-                        }
-                    }
-                }
+                echo "Building Docker image..."
+                sh "docker build -t ${IMAGE_NAME}:latest ."
             }
         }
-        
-        stage('Frontend: Lint & Build') {
+
+        stage('Stop Existing Container') {
             steps {
-                dir('frontend') {
-                    bat '''
-                        call npm ci || exit /b 0
-                        call npm run lint || exit /b 0
-                        call npm run build || exit /b 0
-                    '''
-                }
+                echo "Stopping existing container if running..."
+                sh '''
+                    if [ $(docker ps -q -f name=${CONTAINER_NAME}) ]; then
+                        docker stop ${CONTAINER_NAME}
+                        docker rm ${CONTAINER_NAME}
+                    fi
+                '''
             }
         }
-        
-        stage('SonarCloud Analysis') {
+
+        stage('Run Docker Container') {
             steps {
-                withSonarQubeEnv('SonarCloud') {
-                    bat """
-                        where sonar-scanner >nul 2>&1 || npm install -g sonarqube-scanner || exit /b 0
-                        sonar-scanner -Dsonar.projectKey=${SONAR_PROJECT_KEY} -Dsonar.organization=${SONAR_ORGANIZATION} -Dsonar.sources=backend,frontend/src -Dsonar.exclusions=backend/venv/**,backend/__pycache__/**,backend/**/*.pyc,backend/reports/**,backend/.venv/**,backend/setup/aws_setup.py,backend/seed_database.py,frontend/node_modules/**,frontend/dist/**,frontend/build/**,frontend/reports/**,frontend/public/** -Dsonar.python.version=3.10 -Dsonar.sourceEncoding=UTF-8 || exit /b 0
-                    """
-                }
+                echo "Running new container using EC2 IAM role..."
+                sh """
+                    docker run -d --name ${CONTAINER_NAME} \
+                        -p ${APP_PORT}:5000 \
+                        -e AWS_REGION=${AWS_REGION} \
+                        --restart unless-stopped \
+                        ${IMAGE_NAME}:latest
+                """
+            }
+        }
+
+        stage('Clean Up Old Docker Images') {
+            steps {
+                echo "Removing dangling Docker images..."
+                sh "docker image prune -f"
+            }
+        }
+
+        stage('Test DynamoDB Connectivity') {
+            steps {
+                echo "Testing DynamoDB access from container..."
+                sh """
+                    docker run --rm \
+                        -e AWS_REGION=${AWS_REGION} \
+                        ${IMAGE_NAME}:latest \
+                        python -c "import boto3; list(boto3.resource('dynamodb', region_name='${AWS_REGION}').tables.all()); print('DynamoDB reachable')"
+                """
             }
         }
     }
-    
+
     post {
-        always {
-            script {
-                try {
-                    def qg = waitForQualityGate()
-                    if (qg.status != 'OK') {
-                        error "Quality gate failed: ${qg.status}"
-                    }
-                } catch (Exception e) {
-                    echo "Quality gate skipped: ${e.getMessage()}"
-                }
-            }
-            cleanWs()
+        success {
+            echo "Deployment successful! App is running on port ${APP_PORT}"
+        }
+        failure {
+            echo " Deployment failed!"
         }
     }
 }
