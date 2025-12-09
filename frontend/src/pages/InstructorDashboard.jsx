@@ -6,7 +6,7 @@ import { authService } from '../utils/auth';
 const InstructorDashboard = () => {
   const user = authService.getUser();
   const userName = user?.name || 'Instructor';
-
+  // Force refetch on mount to ensure fresh data
   const { data, isLoading, error } = useGetCoursesQuery(
     { instructorId: user?.userId },
     { refetchOnMountOrArgChange: true }
@@ -43,7 +43,7 @@ const InstructorDashboard = () => {
 
   return (
     <div className="dashboard-container">
-      {}
+      {/* Welcome Header */}
       <div className="dashboard-header" style={{ background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' }}>
         <div className="dashboard-header-content">
           <div>
@@ -61,7 +61,7 @@ const InstructorDashboard = () => {
         </div>
       </div>
 
-      {}
+      {/* My Courses Section */}
       <div className="dashboard-section">
         <div className="dashboard-section-header">
           <h2>My Courses</h2>
@@ -96,7 +96,7 @@ const InstructorDashboard = () => {
                   </div>
                   <h3 className="enrollment-card-title">{course.title}</h3>
                 </div>
-
+                
                 <p className="enrollment-card-description">
                   {course.description || 'No description available.'}
                 </p>

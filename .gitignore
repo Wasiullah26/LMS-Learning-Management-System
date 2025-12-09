@@ -82,6 +82,15 @@ $RECYCLE.BIN/
 *.key
 
 # ============================================
+# Elastic Beanstalk
+# ============================================
+# Elastic Beanstalk configuration and deployment files
+.ebextensions/
+.elasticbeanstalk/
+*.ebextensions
+.ebignore
+
+# ============================================
 # Documentation Files
 # ============================================
 # Ignore all markdown files except README.md
@@ -98,8 +107,3 @@ $RECYCLE.BIN/
 !frontend/package.json
 !frontend/package-lock.json
 
-
-# Elastic Beanstalk Files
-.elasticbeanstalk/*
-!.elasticbeanstalk/*.cfg.yml
-!.elasticbeanstalk/*.global.yml

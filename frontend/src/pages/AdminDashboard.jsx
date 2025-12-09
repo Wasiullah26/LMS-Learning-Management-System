@@ -65,7 +65,7 @@ const AdminDashboard = () => {
 
   return (
     <div className="dashboard-container">
-      {}
+      {/* Welcome Header */}
       <div className="dashboard-header" style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
         <div className="dashboard-header-content">
           <div>
@@ -81,7 +81,7 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      {}
+      {/* Admin Actions */}
       <div className="dashboard-section">
         <h2 style={{ marginBottom: '1.5rem', fontSize: '1.5rem', fontWeight: '600', color: '#2c3e50' }}>
           Quick Actions

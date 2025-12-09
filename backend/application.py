@@ -1,6 +1,7 @@
 from app import create_app
 import os
 
+# EB looks for 'application' by default
 application = create_app()
 
 if __name__ == "__main__":

@@ -4,7 +4,7 @@ const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, confirmText 
   if (!isOpen) return null;
 
   return (
-    <div
+    <div 
       style={{
         position: 'fixed',
         top: 0,
@@ -19,7 +19,7 @@ const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, confirmText 
       }}
       onClick={onClose}
     >
-      <div
+      <div 
         className="card"
         style={{
           maxWidth: '500px',
@@ -38,11 +38,11 @@ const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, confirmText 
           <button onClick={onClose} className="btn btn-secondary">
             {cancelText}
           </button>
-          <button
+          <button 
             onClick={() => {
               onConfirm();
               onClose();
-            }}
+            }} 
             className={`btn ${type === 'danger' ? 'btn-danger' : 'btn-primary'}`}
           >
             {confirmText}

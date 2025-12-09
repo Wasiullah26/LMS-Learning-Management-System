@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import {
-  useGetCourseQuery,
-  useCreateCourseMutation,
+import { 
+  useGetCourseQuery, 
+  useCreateCourseMutation, 
   useUpdateCourseMutation,
   useGetModulesQuery,
   useCreateModuleMutation,
@@ -11,9 +11,9 @@ import {
 } from '../services/apiSlice';
 import { toast } from '../utils/toast';
 import ConfirmModal from '../components/ConfirmModal';
-import {
-  validateTitle,
-  validateDescription,
+import { 
+  validateTitle, 
+  validateDescription, 
   validateCategory,
   validateModuleDescription,
   validateNumber
@@ -24,18 +24,18 @@ const InstructorCourseManage = () => {
   const navigate = useNavigate();
   const isNew = !id || id === 'new';
   const moduleFormRef = useRef(null);
-
-
+  
+  // Force refetch on mount to ensure fresh data
   const { data: courseData, isLoading: courseLoading } = useGetCourseQuery(
-    id,
-    {
+    id, 
+    { 
       skip: isNew,
       refetchOnMountOrArgChange: true
     }
   );
   const { data: modulesData, refetch: refetchModules } = useGetModulesQuery(
-    id,
-    {
+    id, 
+    { 
       skip: isNew,
       refetchOnMountOrArgChange: true
     }
@@ -45,7 +45,7 @@ const InstructorCourseManage = () => {
   const [createModule] = useCreateModuleMutation();
   const [updateModule] = useUpdateModuleMutation();
   const [deleteModule] = useDeleteModuleMutation();
-
+  
   const [course, setCourse] = useState({
     title: '',
     description: '',
@@ -103,11 +103,12 @@ const InstructorCourseManage = () => {
     }
   }, [courseData]);
 
+  // Scroll to form when it becomes visible (for editing modules)
   useEffect(() => {
     if (showModuleForm && editingModule && moduleFormRef.current) {
       setTimeout(() => {
-        moduleFormRef.current.scrollIntoView({
-          behavior: 'smooth',
+        moduleFormRef.current.scrollIntoView({ 
+          behavior: 'smooth', 
           block: 'start',
           inline: 'nearest'
         });
@@ -115,7 +116,7 @@ const InstructorCourseManage = () => {
     }
   }, [showModuleForm, editingModule]);
 
-
+  // Check if course has been modified
   const hasChanges = useMemo(() => {
     if (isNew || !originalCourse) return true;
     return (
@@ -129,8 +130,8 @@ const InstructorCourseManage = () => {
 
   const handleCourseChange = (field, value) => {
     setCourse(prev => ({ ...prev, [field]: value }));
-
-
+    
+    // Real-time validation after first blur
     if (courseTouched[field]) {
       validateCourseField(field, value);
     }
@@ -138,7 +139,7 @@ const InstructorCourseManage = () => {
 
   const validateCourseField = (field, value) => {
     let validation;
-
+    
     switch (field) {
       case 'title':
         validation = validateTitle(value, { fieldName: 'Course title' });
@@ -175,7 +176,7 @@ const InstructorCourseManage = () => {
     e.preventDefault();
     setError('');
 
-
+    // Mark all course fields as touched
     const allTouched = {
       title: true,
       description: true,
@@ -183,7 +184,7 @@ const InstructorCourseManage = () => {
     };
     setCourseTouched(allTouched);
 
-
+    // Validate all course fields
     const titleValidation = validateTitle(course.title, { fieldName: 'Course title' });
     const descriptionValidation = validateDescription(course.description, { fieldName: 'Description' });
     const categoryValidation = validateCategory(course.category);
@@ -225,8 +226,8 @@ const InstructorCourseManage = () => {
     } else {
       setModuleForm(prev => ({ ...prev, [field]: value }));
     }
-
-
+    
+    // Real-time validation after first blur
     if (moduleTouched[field]) {
       validateModuleField(field, field === 'order' ? parseInt(value) || 1 : value);
     }
@@ -234,7 +235,7 @@ const InstructorCourseManage = () => {
 
   const validateModuleField = (field, value) => {
     let validation;
-
+    
     switch (field) {
       case 'title':
         validation = validateTitle(value, { fieldName: 'Module title' });
@@ -270,7 +271,7 @@ const InstructorCourseManage = () => {
   const handleAddModule = async (e) => {
     e.preventDefault();
 
-
+    // Mark all module fields as touched
     const allTouched = {
       title: true,
       description: true,
@@ -278,7 +279,7 @@ const InstructorCourseManage = () => {
     };
     setModuleTouched(allTouched);
 
-
+    // Validate all module fields
     const titleValidation = validateTitle(moduleForm.title, { fieldName: 'Module title' });
     const descriptionValidation = validateModuleDescription(moduleForm.description);
     const orderValidation = validateNumber(moduleForm.order, { fieldName: 'Order', min: 1, max: 999 });
@@ -311,8 +312,8 @@ const InstructorCourseManage = () => {
         }).unwrap();
         toast.success('Module updated successfully!');
       } else {
-        await createModule({
-          courseId: id,
+        await createModule({ 
+          courseId: id, 
           ...moduleData
         }).unwrap();
         toast.success('Module created successfully!');
@@ -338,12 +339,12 @@ const InstructorCourseManage = () => {
     setModuleErrors({ title: '', description: '', order: '' });
     setModuleTouched({ title: false, description: false, order: false });
     setShowModuleForm(true);
-
+    // Scroll to form after state update
     setTimeout(() => {
       if (moduleFormRef.current) {
-        moduleFormRef.current.scrollIntoView({
-          behavior: 'smooth',
-          block: 'start'
+        moduleFormRef.current.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'start' 
         });
       }
     }, 100);
@@ -380,10 +381,10 @@ const InstructorCourseManage = () => {
   return (
     <div>
       <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-        <button
-          onClick={() => navigate(-1)}
+        <button 
+          onClick={() => navigate(-1)} 
           className="back-button"
-          style={{
+          style={{ 
             background: 'none',
             border: 'none',
             cursor: 'pointer',
@@ -400,7 +401,7 @@ const InstructorCourseManage = () => {
         {isNew ? 'Create New Course' : 'Edit Course'}
       </h1>
       {error && <div className="alert alert-error">{error}</div>}
-
+      
       <form onSubmit={handleSubmit} className="card" style={{ marginTop: '1rem' }}>
         <div className="form-group">
           <label>Course Title *</label>
@@ -454,12 +455,12 @@ const InstructorCourseManage = () => {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
             <h2>Modules ({modules.length})</h2>
             {!showModuleForm && (
-              <button
+              <button 
                 onClick={() => {
                   setModuleForm({ title: '', description: '', order: modules.length + 1 });
                   setShowModuleForm(true);
                   setEditingModule(null);
-                }}
+                }} 
                 className="btn btn-primary"
               >
                 Add Module

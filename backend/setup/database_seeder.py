@@ -6,6 +6,7 @@ from predefined_data import ADMIN_CONFIG, SPECIALIZATIONS_DATA, COURSES_BY_SPECI
 
 
 class DatabaseSeeder:
+    # this class handles seeding the database with initial data
 
     def __init__(self):
         self.user_model = UserModel()
@@ -22,6 +23,8 @@ class DatabaseSeeder:
         }
 
     def seed_all(self, silent=False):
+        # seeds all the data - admin, specializations, courses, instructors, modules
+        # if silent is true it wont print much stuff
         try:
             self._seed_admin(silent)
             specialization_map = self._seed_specializations(silent)
@@ -46,6 +49,7 @@ class DatabaseSeeder:
             return self.stats
 
     def _seed_admin(self, silent=False):
+        # creates admin user if it doesnt exist
         if not silent:
             print("Checking admin user...")
 
@@ -73,6 +77,7 @@ class DatabaseSeeder:
                 print(f"⚠ {error_msg}")
 
     def _seed_specializations(self, silent=False):
+        # creates specializations if they dont exist
         if not silent:
             print("Checking specializations...")
 
@@ -104,6 +109,7 @@ class DatabaseSeeder:
         return specialization_map
 
     def _fix_courses_missing_specialization(self, specialization_map, silent=False):
+        # fixes courses that dont have specializationId set
         existing_courses = self.course_model.list_courses()
         courses_without_spec = [c for c in existing_courses if "specializationId" not in c]
 
@@ -113,6 +119,7 @@ class DatabaseSeeder:
         if not silent:
             print(f"⚠ Found {len(courses_without_spec)} courses without specializationId, updating...")
 
+        # map course titles to their specializations
         course_title_to_spec = {}
         for spec_code, courses_data in COURSES_BY_SPECIALIZATION.items():
             specialization_id = specialization_map.get(spec_code)
@@ -134,6 +141,7 @@ class DatabaseSeeder:
                     self.stats["errors"].append(error_msg)
 
     def _seed_courses_and_instructors(self, specialization_map, silent=False):
+        # creates courses, instructors, and modules for each specialization
         if not silent:
             print("Checking specializations and courses...")
 
@@ -143,6 +151,7 @@ class DatabaseSeeder:
                 continue
 
             for course_data in courses_data:
+                # first make sure instructor exists
                 instructor = self.user_model.get_user_by_email(course_data["instructor_email"])
                 if not instructor:
                     success, result = self.user_model.create_user(
@@ -164,6 +173,7 @@ class DatabaseSeeder:
                 else:
                     instructor_id = instructor["userId"]
 
+                # check if course already exists
                 all_courses = self.course_model.list_courses()
                 existing_course = None
                 for c in all_courses:
@@ -174,6 +184,7 @@ class DatabaseSeeder:
                 if existing_course:
                     course_id = existing_course["courseId"]
 
+                    # make sure instructor is linked to the course
                     instructor_obj = self.user_model.get_user_by_id(instructor_id)
                     if instructor_obj:
                         existing_course_ids = instructor_obj.get("courseIds", [])
@@ -183,6 +194,7 @@ class DatabaseSeeder:
                             existing_course_ids.append(course_id)
                             self.user_model.update_user(instructor_id, courseIds=existing_course_ids)
                 else:
+                    # create the course
                     success, course_result = self.course_model.create_course(
                         instructor_id=instructor_id,
                         title=course_data["title"],
@@ -195,6 +207,7 @@ class DatabaseSeeder:
                         course_id = course_result["courseId"]
                         self.stats["courses_created"] += 1
 
+                        # link instructor to course
                         instructor_obj = self.user_model.get_user_by_id(instructor_id)
                         if instructor_obj:
                             existing_course_ids = instructor_obj.get("courseIds", [])
@@ -204,6 +217,7 @@ class DatabaseSeeder:
                                 existing_course_ids.append(course_id)
                                 self.user_model.update_user(instructor_id, courseIds=existing_course_ids)
 
+                        # create modules for the course
                         modules_created = 0
                         for module_data in SAMPLE_MODULES:
                             self.module_model.create_module(
@@ -228,6 +242,7 @@ class DatabaseSeeder:
                 )
 
     def _print_summary(self):
+        # prints what was created
         print("\n" + "=" * 60)
         print("Seeding Summary:")
         print(f"  Admin created: {'Yes' if self.stats['admin_created'] else 'Already existed'}")
@@ -243,5 +258,6 @@ class DatabaseSeeder:
 
 
 def seed_database(silent=False):
+    # helper function to seed database, just call this when you need to seed
     seeder = DatabaseSeeder()
     return seeder.seed_all(silent=silent)

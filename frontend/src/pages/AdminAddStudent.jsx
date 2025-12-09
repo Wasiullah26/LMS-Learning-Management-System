@@ -2,19 +2,19 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGetSpecializationsQuery, useAddStudentMutation } from '../services/apiSlice';
 import { toast } from '../utils/toast';
-import {
-  validateName,
-  validateEmail,
-  validatePassword,
+import { 
+  validateName, 
+  validateEmail, 
+  validatePassword, 
   validateSelect,
-  getPasswordStrength
+  getPasswordStrength 
 } from '../utils/validation';
 
 const AdminAddStudent = () => {
   const navigate = useNavigate();
   const { data: specializationsData, isLoading: loadingSpecs } = useGetSpecializationsQuery();
   const [addStudent, { isLoading }] = useAddStudentMutation();
-
+  
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -45,7 +45,7 @@ const AdminAddStudent = () => {
       [name]: value
     });
 
-
+    // Real-time validation after first blur
     if (touched[name]) {
       validateField(name, value);
     }
@@ -53,7 +53,7 @@ const AdminAddStudent = () => {
 
   const validateField = (name, value) => {
     let validation;
-
+    
     switch (name) {
       case 'name':
         validation = validateName(value, { fieldName: 'Name' });
@@ -88,7 +88,7 @@ const AdminAddStudent = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-
+    // Mark all fields as touched
     const allTouched = {
       name: true,
       email: true,
@@ -97,7 +97,7 @@ const AdminAddStudent = () => {
     };
     setTouched(allTouched);
 
-
+    // Validate all fields
     const nameValidation = validateName(formData.name, { fieldName: 'Name' });
     const emailValidation = validateEmail(formData.email);
     const passwordValidation = validatePassword(formData.password);
@@ -112,7 +112,7 @@ const AdminAddStudent = () => {
 
     setErrors(newErrors);
 
-    if (!nameValidation.isValid || !emailValidation.isValid ||
+    if (!nameValidation.isValid || !emailValidation.isValid || 
         !passwordValidation.isValid || !specializationValidation.isValid) {
       return;
     }
@@ -195,7 +195,7 @@ const AdminAddStudent = () => {
             {formData.password && (
               <div className="password-strength" style={{ marginTop: '0.5rem' }}>
                 <div className="password-strength-bar">
-                  <div
+                  <div 
                     className="password-strength-fill"
                     style={{
                       width: `${(passwordStrength.strength / 6) * 100}%`,

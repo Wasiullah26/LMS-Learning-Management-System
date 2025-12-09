@@ -5,11 +5,11 @@ import { toast } from '../utils/toast';
 
 const AdminManageUsers = () => {
   const navigate = useNavigate();
-  const [filter, setFilter] = useState('all');
-
+  const [filter, setFilter] = useState('all'); // all, student, instructor, admin
+  
   const params = filter !== 'all' ? { role: filter } : {};
   const { data, isLoading, error } = useGetUsersQuery(params);
-
+  
   const allUsers = data?.users || [];
 
   if (error) {
@@ -17,7 +17,7 @@ const AdminManageUsers = () => {
   }
 
 
-
+  // Separate users by role
   const admins = allUsers.filter(u => u.role === 'admin');
   const instructors = allUsers.filter(u => u.role === 'instructor');
   const students = allUsers.filter(u => u.role === 'student');
@@ -120,8 +120,8 @@ const AdminManageUsers = () => {
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             className="form-group"
-            style={{
-              padding: '0.75rem 1rem',
+            style={{ 
+              padding: '0.75rem 1rem', 
               fontSize: '1rem',
               borderRadius: '8px',
               border: '2px solid #e0e0e0',

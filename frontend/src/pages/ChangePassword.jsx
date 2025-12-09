@@ -2,11 +2,11 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useChangePasswordMutation } from '../services/apiSlice';
 import { toast } from '../utils/toast';
-import {
-  validatePassword,
-  validatePasswordMatch,
+import { 
+  validatePassword, 
+  validatePasswordMatch, 
   validatePasswordChange,
-  getPasswordStrength
+  getPasswordStrength 
 } from '../utils/validation';
 
 const ChangePassword = () => {
@@ -37,12 +37,12 @@ const ChangePassword = () => {
       [name]: value
     });
 
-
+    // Real-time validation after first blur
     if (touched[name]) {
       validateField(name, value);
     }
 
-
+    // Special handling for confirm password - check match in real-time
     if (name === 'newPassword' && touched.confirmPassword && formData.confirmPassword) {
       const matchValidation = validatePasswordMatch(value, formData.confirmPassword);
       setErrors(prev => ({ ...prev, confirmPassword: matchValidation.error }));
@@ -56,7 +56,7 @@ const ChangePassword = () => {
 
   const validateField = (name, value) => {
     let validation;
-
+    
     switch (name) {
       case 'oldPassword':
         if (!value || value.trim() === '') {
@@ -68,16 +68,16 @@ const ChangePassword = () => {
       case 'newPassword':
         validation = validatePassword(value);
         setErrors(prev => ({ ...prev, newPassword: validation.error }));
-
-
+        
+        // Also check if it's different from old password
         if (validation.isValid && formData.oldPassword) {
           const changeValidation = validatePasswordChange(formData.oldPassword, value);
           if (!changeValidation.isValid) {
             setErrors(prev => ({ ...prev, newPassword: changeValidation.error }));
           }
         }
-
-
+        
+        // Check confirm password match if it's been touched
         if (touched.confirmPassword && formData.confirmPassword) {
           const matchValidation = validatePasswordMatch(value, formData.confirmPassword);
           setErrors(prev => ({ ...prev, confirmPassword: matchValidation.error }));
@@ -101,7 +101,7 @@ const ChangePassword = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-
+    // Mark all fields as touched
     const allTouched = {
       oldPassword: true,
       newPassword: true,
@@ -109,19 +109,19 @@ const ChangePassword = () => {
     };
     setTouched(allTouched);
 
-
-    const oldPasswordError = !formData.oldPassword || formData.oldPassword.trim() === ''
-      ? 'Current password is required'
+    // Validate all fields
+    const oldPasswordError = !formData.oldPassword || formData.oldPassword.trim() === '' 
+      ? 'Current password is required' 
       : '';
-
+    
     const newPasswordValidation = validatePassword(formData.newPassword);
     const confirmPasswordValidation = validatePasswordMatch(formData.newPassword, formData.confirmPassword);
-
-
+    
+    // Check if new password is different from old
     const passwordChangeValidation = validatePasswordChange(formData.oldPassword, formData.newPassword);
-
-    const newPasswordError = newPasswordValidation.isValid
-      ? passwordChangeValidation.error
+    
+    const newPasswordError = newPasswordValidation.isValid 
+      ? passwordChangeValidation.error 
       : newPasswordValidation.error;
 
     const newErrors = {
@@ -149,8 +149,8 @@ const ChangePassword = () => {
   };
 
   const passwordStrength = getPasswordStrength(formData.newPassword);
-  const passwordsMatch = formData.newPassword && formData.confirmPassword &&
-                         formData.newPassword === formData.confirmPassword &&
+  const passwordsMatch = formData.newPassword && formData.confirmPassword && 
+                         formData.newPassword === formData.confirmPassword && 
                          !errors.confirmPassword;
 
   return (
@@ -196,7 +196,7 @@ const ChangePassword = () => {
             {formData.newPassword && (
               <div className="password-strength" style={{ marginTop: '0.5rem' }}>
                 <div className="password-strength-bar">
-                  <div
+                  <div 
                     className="password-strength-fill"
                     style={{
                       width: `${(passwordStrength.strength / 6) * 100}%`,
