@@ -1,196 +1,126 @@
 pipeline {
     agent any
-    
+
     environment {
-        AWS_REGION = 'us-east-1'  // Change to your region
-        EB_APPLICATION_NAME = 'lms-application'
-        EB_ENVIRONMENT_NAME = 'lms-env'
-        EB_PLATFORM = 'Python 3.10'
-        NODE_VERSION = '18'
-        PYTHON_VERSION = '3.10'
-        SONAR_TOKEN = credentials('sonarcloud-token')  // Jenkins credential ID
-        SONAR_ORGANIZATION = 'wasiullah26'  // Your SonarCloud organization key
-        SONAR_PROJECT_KEY = 'Wasiullah26_LMS-Learning-Management-System'  // Your SonarCloud project key (single project for whole repo)
-        AWS_SESSION_TOKEN = credentials('aws-session-token')  // AWS Academy Learner Lab session token (optional - only needed for temporary credentials)
+        IMAGE_NAME = "lms-app"
+        CONTAINER_NAME = "lms-container"
+        APP_PORT = "5000"
+        AWS_REGION = 'us-east-1'
+        SONAR_TOKEN = credentials('sonarqube-credentials')
     }
-    
     stages {
-        stage('Checkout') {
+        stage('Checkout Code') {
             steps {
-                checkout scm
+                checkout scmGit(branches: [[name: '*/main']], extensions: [], userRemoteConfigs: [[credentialsId: 'github-credentials', url: 'https://github.com/Wasiullah26/LMS-Learning-Management-System.git']])
             }
         }
         
-        stage('Backend Analysis') {
-            steps {
-                dir('backend') {
-                    sh '''
-                        python3 -m venv venv || true
-                        source venv/bin/activate || . venv/Scripts/activate
-                        pip install --upgrade pip
-                        pip install -r requirements.txt
-                        pip install -r requirements-dev.txt
-                        ./run_analysis.sh || true
-                    '''
-                }
-            }
-            post {
-                always {
-                    archiveArtifacts artifacts: 'backend/reports/*.txt', allowEmptyArchive: true
-                }
-            }
-        }
-        
-        stage('Frontend Analysis') {
-            steps {
-                dir('frontend') {
-                    sh '''
-                        npm ci
-                        npm run lint || true
-                        npm audit --audit-level=moderate || true
-                    '''
-                }
-            }
-            post {
-                always {
-                    archiveArtifacts artifacts: 'frontend/reports/*.txt', allowEmptyArchive: true
-                }
-            }
-        }
-        
-        stage('SonarCloud Analysis') {
-            steps {
-                withSonarQubeEnv('SonarCloud') {
-                    sh '''
-                        # Install SonarScanner
-                        pip install sonar-scanner || pip3 install sonar-scanner || npm install -g sonarqube-scanner || true
-                        
-                        # Run SonarScanner from root directory (analyzes both backend and frontend)
-                        sonar-scanner \
-                            -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
-                            -Dsonar.organization=${SONAR_ORGANIZATION} \
-                            -Dsonar.sources=backend,frontend/src \
-                            -Dsonar.exclusions=backend/venv/**,backend/__pycache__/**,backend/**/*.pyc,backend/reports/**,backend/.venv/**,backend/setup/aws_setup.py,backend/seed_database.py,frontend/node_modules/**,frontend/dist/**,frontend/build/**,frontend/reports/**,frontend/public/** \
-                            -Dsonar.python.version=3.10 \
-                            -Dsonar.python.coverage.reportPaths=backend/coverage.xml \
-                            -Dsonar.javascript.lcov.reportPaths=frontend/coverage/lcov.info \
-                            -Dsonar.sourceEncoding=UTF-8
-                    '''
-                }
-            }
-        }
-        
-        stage('Build Frontend') {
-            steps {
-                dir('frontend') {
-                    sh '''
-                        npm ci
-                        npm run build
-                    '''
-                }
-            }
-            post {
-                success {
-                    archiveArtifacts artifacts: 'frontend/dist/**/*', allowEmptyArchive: true
-                }
-            }
-        }
-        
-        stage('Prepare Deployment Package') {
-            steps {
-                sh '''
-                    # Create deployment directory
-                    mkdir -p deploy
-                    
-                    # Copy backend files
-                    cp -r backend/* deploy/
-                    rm -rf deploy/venv deploy/__pycache__ deploy/reports
-                    rm -f deploy/*.bat deploy/*.sh
-                    
-                    # Copy frontend build
-                    cp -r frontend/dist deploy/static
-                    
-                    # Create Procfile for Elastic Beanstalk
-                    echo "web: gunicorn application:application" > deploy/Procfile
-                    
-                    # Create .ebextensions directory
-                    mkdir -p deploy/.ebextensions
-                    
-                    # Create requirements.txt in root (EB expects it)
-                    cp backend/requirements.txt deploy/requirements.txt
-                    
-                    # Create application.py (EB entry point)
-                    cat > deploy/application.py << 'EOF'
-from app import create_app
-import os
+        stage('Python Lint & Security Checks') {
+    steps {
+        echo "Running Pylint, Flake8, Bandit, Safety..."
+        sh '''
+            # Ensure Python 3 and pip are available
+            python3 --version || exit 1
+            python3 -m pip --version || exit 1
 
-application = create_app()
+            # Create and activate virtual environment
+            python3 -m venv venv
+            . venv/bin/activate
 
-if __name__ == "__main__":
-    application.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
-EOF
-                '''
-            }
-        }
-        
-        stage('Create ZIP for Deployment') {
-            steps {
-                sh '''
-                    cd deploy
-                    zip -r ../lms-deployment-${BUILD_NUMBER}.zip .
-                    cd ..
-                '''
-            }
-            post {
-                success {
-                    archiveArtifacts artifacts: 'lms-deployment-*.zip', allowEmptyArchive: true
-                }
-            }
-        }
-        
-        stage('Deploy to Elastic Beanstalk') {
-            steps {
-                script {
-                    withAWS(credentials: 'aws-credentials', region: "${AWS_REGION}") {
-                        sh '''
-                            # Set session token for temporary credentials (AWS Academy Learner Lab)
-                            # This is only needed if using temporary credentials with session tokens
-                            if [ -n "${AWS_SESSION_TOKEN}" ]; then
-                                export AWS_SESSION_TOKEN="${AWS_SESSION_TOKEN}"
-                            fi
-                            
-                            # Install EB CLI if not present
-                            pip3 install awsebcli --user || true
-                            
-                            # Deploy using EB CLI
-                            cd deploy
-                            eb deploy "${EB_ENVIRONMENT_NAME}" --staged || eb deploy "${EB_ENVIRONMENT_NAME}"
-                            cd ..
-                        '''
-                    }
-                }
-            }
-        }
+            # Upgrade pip and install tools
+            python3 -m pip install --upgrade pip
+            python3 -m pip install pylint flake8 bandit safety
+
+            # Run Pylint
+            pylint backend/**/*.py || true
+
+            # Run Flake8
+            flake8 backend || true
+
+            # Run Bandit (security checks)
+            bandit -r backend -ll -iii || true
+
+            # Run Safety (vulnerability scan)
+            safety check || true
+        '''
     }
-    
-    post {
-        always {
-            // Wait for SonarCloud quality gate
+}
+stage('SonarQube Analysis') {
+    steps {
+        withSonarQubeEnv('SonarQube') {
             script {
-                def qg = waitForQualityGate()
-                if (qg.status != 'OK') {
-                    error "Pipeline aborted due to quality gate failure: ${qg.status}"
-                }
+                def scannerHome = tool 'sonar-scanner'
             }
-            cleanWs()
-        }
-        success {
-            echo 'Pipeline succeeded!'
-        }
-        failure {
-            echo 'Pipeline failed!'
+            sh """
+                ${tool('sonar-scanner')}/bin/sonar-scanner \
+                  -Dsonar.projectKey=lms-project \
+                  -Dsonar.sources=backend \
+                  -Dsonar.exclusions=backend/venv/**,backend/__pycache__/**,backend/**/*.pyc,backend/reports/**,backend/.venv/**,frontend/node_modules/**,frontend/dist/**,frontend/build/**,frontend/reports/** \
+                  -Dsonar.python.version=3 \
+                  -Dsonar.host.url=http://34.232.240.118:9000 \
+                  -Dsonar.login=${SONAR_TOKEN}
+            """
         }
     }
 }
+        stage('Build Docker Image') {
+            steps {
+                echo "Building Docker image..."
+                sh "docker build -t ${IMAGE_NAME}:latest ."
+            }
+        }
 
+        stage('Stop Existing Container') {
+            steps {
+                echo "Stopping existing container if running..."
+                sh '''
+                    if [ $(docker ps -q -f name=${CONTAINER_NAME}) ]; then
+                        docker stop ${CONTAINER_NAME}
+                        docker rm ${CONTAINER_NAME}
+                    fi
+                '''
+            }
+        }
 
+        stage('Run Docker Container') {
+            steps {
+                echo "Running new container using EC2 IAM role..."
+                sh """
+                    docker run -d --name ${CONTAINER_NAME} \
+                        -p ${APP_PORT}:5000 \
+                        -e AWS_REGION=${AWS_REGION} \
+                        --restart unless-stopped \
+                        ${IMAGE_NAME}:latest
+                """
+            }
+        }
+
+        stage('Clean Up Old Docker Images') {
+            steps {
+                echo "Removing dangling Docker images..."
+                sh "docker image prune -f"
+            }
+        }
+
+        stage('Test DynamoDB Connectivity') {
+            steps {
+                echo "Testing DynamoDB access from container..."
+                sh """
+                    docker run --rm \
+                        -e AWS_REGION=${AWS_REGION} \
+                        ${IMAGE_NAME}:latest \
+                        python -c "import boto3; list(boto3.resource('dynamodb', region_name='${AWS_REGION}').tables.all()); print('DynamoDB reachable')"
+                """
+            }
+        }
+    }
+
+    post {
+        success {
+            echo " Deployment successful! App is running on port ${APP_PORT}"
+        }
+        failure {
+            echo " Deployment failed!"
+        }
+    }
+}
