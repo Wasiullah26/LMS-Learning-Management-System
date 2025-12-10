@@ -6,6 +6,9 @@ from config import Config
 
 
 class ProgressModel:
+    ATTR_STUDENT_ID = ":studentId"
+    ATTR_MODULE_ID = ":moduleId"
+    ATTR_COURSE_ID = ":courseId"
 
     def __init__(self):
         if Config.AWS_ACCESS_KEY_ID and Config.AWS_SECRET_ACCESS_KEY:
@@ -51,8 +54,12 @@ class ProgressModel:
     def get_progress(self, student_id, module_id, course_id):
         try:
             response = self.table.scan(
-                FilterExpression="studentId = :studentId AND moduleId = :moduleId AND courseId = :courseId",
-                ExpressionAttributeValues={":studentId": student_id, ":moduleId": module_id, ":courseId": course_id},
+                FilterExpression=f"studentId = {self.ATTR_STUDENT_ID} AND moduleId = {self.ATTR_MODULE_ID} AND courseId = {self.ATTR_COURSE_ID}",
+                ExpressionAttributeValues={
+                    self.ATTR_STUDENT_ID: student_id,
+                    self.ATTR_MODULE_ID: module_id,
+                    self.ATTR_COURSE_ID: course_id
+                },
             )
             items = response.get("Items", [])
             return items[0] if items else None
@@ -62,7 +69,8 @@ class ProgressModel:
     def get_progress_by_student(self, student_id):
         try:
             response = self.table.query(
-                KeyConditionExpression="studentId = :studentId", ExpressionAttributeValues={":studentId": student_id}
+                KeyConditionExpression=f"studentId = {self.ATTR_STUDENT_ID}",
+                ExpressionAttributeValues={self.ATTR_STUDENT_ID: student_id}
             )
             return response.get("Items", [])
         except ClientError:
@@ -71,8 +79,11 @@ class ProgressModel:
     def get_progress_by_course(self, student_id, course_id):
         try:
             response = self.table.scan(
-                FilterExpression="studentId = :studentId AND courseId = :courseId",
-                ExpressionAttributeValues={":studentId": student_id, ":courseId": course_id},
+                FilterExpression=f"studentId = {self.ATTR_STUDENT_ID} AND courseId = {self.ATTR_COURSE_ID}",
+                ExpressionAttributeValues={
+                    self.ATTR_STUDENT_ID: student_id,
+                    self.ATTR_COURSE_ID: course_id
+                },
             )
             return response.get("Items", [])
         except ClientError:
