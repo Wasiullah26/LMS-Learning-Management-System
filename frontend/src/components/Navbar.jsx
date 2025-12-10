@@ -23,7 +23,7 @@ const Navbar = () => {
       <div className="navbar-links">
         {isAuthenticated ? (
           <>
-            <Link to="/dashboard">Wasiullah(dash)</Link>
+            <Link to="/dashboard">Dashboard</Link>
             {!isAdmin && <Link to="/courses">My Courses</Link>}
             <Link to="/change-password">Change Password</Link>
             <span style={{ color: 'white' }}>Welcome, {user?.name}</span>
